@@ -67,6 +67,15 @@ namespace
 	}
 }
 //
+size_t monero_transfer_utils::fixed_ringsize()
+{
+	return 10; // TODO/FIXME: temporary
+}
+size_t monero_transfer_utils::fixed_mixinsize()
+{
+	return monero_transfer_utils::fixed_ringsize() - 1;
+}
+//
 bool monero_transfer_utils::create_signed_transaction(
 	const CreateTx_Args &args,
 	CreateTx_RetVals &retVals
@@ -135,7 +144,7 @@ bool monero_transfer_utils::create_signed_transaction(
 	std::vector<cryptonote::tx_destination_entry> dsts = args.dsts;
 	std::vector<transfer_details> transfers = args.transfers;
 	uint64_t blockchain_size = args.blockchain_size;
-	const size_t fake_outs_count = args.fake_outs_count;
+	const size_t fake_outs_count = monero_transfer_utils::fixed_mixinsize();
 	const uint64_t unlock_time = args.unlock_time;
 	uint32_t priority = args.priority;
 	uint32_t default_priority = args.default_priority;
@@ -584,7 +593,7 @@ bool monero_transfer_utils::_transfer_selected_nonrct(
 	const transfer_container &transfers,
 	const std::vector<cryptonote::tx_destination_entry>& dsts,
 	const std::list<size_t> selected_transfers,
-	size_t fake_outputs_count,
+	size_t fake_outs_count,
 	std::vector<std::vector<get_outs_entry>> &outs,
 	uint64_t unlock_time,
 	uint64_t fee,
@@ -643,7 +652,7 @@ bool monero_transfer_utils::_transfer_selected_nonrct(
 	if (outs.empty()) {
 		// TODO / FIXME:
 		// I'm thinking possibly remove this and/or just throw exception by this point… wallet should surely have detected empty outs by now?
-		//		get_outs(outs, selected_transfers, fake_outputs_count); // may throw
+		//		get_outs(outs, selected_transfers, fake_outs_count); // may throw
 		//
 		// TODO: temporary or permanent?
 		err_retVals.didError = true;
@@ -663,7 +672,7 @@ bool monero_transfer_utils::_transfer_selected_nonrct(
 		src.amount = td.amount();
 		src.rct = td.is_rct();
 		//paste keys (fake and real)
-		for (size_t n = 0; n < fake_outputs_count + 1; ++n) {
+		for (size_t n = 0; n < fake_outs_count + 1; ++n) {
 			tx_output_entry oe;
 			oe.first = std::get<0>(outs[out_index][n]);
 			oe.second.dest = rct::pk2rct(std::get<1>(outs[out_index][n]));
@@ -780,7 +789,7 @@ bool monero_transfer_utils::_transfer_selected_rct(
 	const transfer_container &transfers,
 	std::vector<cryptonote::tx_destination_entry> dsts,
 	const std::list<size_t> selected_transfers,
-	size_t fake_outputs_count,
+	size_t fake_outs_count,
 	std::vector<std::vector<get_outs_entry>> &outs,
 	uint64_t unlock_time,
 	uint64_t fee,
@@ -837,7 +846,7 @@ bool monero_transfer_utils::_transfer_selected_rct(
 	if (outs.empty()) {
 		// TODO / FIXME:
 		// I'm thinking possibly remove this and/or just throw exception by this point… wallet should surely have detected empty outs by now?
-//		get_outs(outs, selected_transfers, fake_outputs_count); // may throw
+//		get_outs(outs, selected_transfers, fake_outs_count); // may throw
 		//
 		// TODO: temporary or permanent?
 		err_retVals.didError = true;
@@ -858,7 +867,7 @@ bool monero_transfer_utils::_transfer_selected_rct(
 		//paste mixin transaction
 		//
 		typedef cryptonote::tx_source_entry::output_entry tx_output_entry;
-		for (size_t n = 0; n < fake_outputs_count + 1; ++n) {
+		for (size_t n = 0; n < fake_outs_count + 1; ++n) {
 			tx_output_entry oe;
 			oe.first = std::get<0>(outs[out_index][n]);
 			oe.second.dest = rct::pk2rct(std::get<1>(outs[out_index][n]));

@@ -190,7 +190,6 @@ namespace monero_transfer_utils
 		std::vector<cryptonote::tx_destination_entry> dsts;
 		std::vector<transfer_details> transfers;
 		uint64_t blockchain_size;
-		const size_t fake_outs_count;
 		const uint64_t unlock_time;
 		uint32_t priority;
 		uint32_t default_priority;
@@ -279,6 +278,9 @@ namespace monero_transfer_utils
 	bool is_transfer_unlocked(const transfer_details& td, uint64_t blockchain_size, bool is_testnet = false);
 	bool is_tx_spendtime_unlocked(uint64_t unlock_time, uint64_t block_height, uint64_t blockchain_size, bool is_testnet = false);
 	uint64_t get_unlocked_balance(const transfer_container &transfers, uint64_t blockchain_size, bool is_testnet);
+	//
+	size_t fixed_ringsize(); // not mixinsize, which would be ringsize-1
+	size_t fixed_mixinsize(); // not ringsize, which would be mixinsize+1
 	//
 	namespace detail
 	{
