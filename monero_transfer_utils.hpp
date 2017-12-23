@@ -50,8 +50,7 @@
 #define TX_SIZE_TARGET(bytes) (bytes*2/3)
 //
 namespace monero_transfer_utils
-{
-	
+{	
 	//
 	// Common - Types
 	struct transfer_details
@@ -76,19 +75,19 @@ namespace monero_transfer_utils
 			return boost::get<const cryptonote::txout_to_key>(m_tx.vout[m_internal_output_index].target).key;
 		}
 		BEGIN_SERIALIZE_OBJECT()
-		FIELD(m_block_height)
-		FIELD(m_tx)
-		FIELD(m_txid)
-		FIELD(m_internal_output_index)
-		FIELD(m_global_output_index)
-		FIELD(m_spent)
-		FIELD(m_spent_height)
-		FIELD(m_key_image)
-		FIELD(m_mask)
-		FIELD(m_amount)
-		FIELD(m_rct)
-		FIELD(m_key_image_known)
-		FIELD(m_pk_index)
+			FIELD(m_block_height)
+			FIELD(m_tx)
+			FIELD(m_txid)
+			FIELD(m_internal_output_index)
+			FIELD(m_global_output_index)
+			FIELD(m_spent)
+			FIELD(m_spent_height)
+			FIELD(m_key_image)
+			FIELD(m_mask)
+			FIELD(m_amount)
+			FIELD(m_rct)
+			FIELD(m_key_image_known)
+			FIELD(m_pk_index)
 		END_SERIALIZE()
 	};
 	struct payment_details
@@ -184,11 +183,15 @@ namespace monero_transfer_utils
 	// Interface - Constructing new transactions
 	struct CreateTx_Args
 	{
+		CreateTx_Args() = delete; // disallow `CreateTx_Args foo;` default constructor
+		//
 		std::string sec_viewKey_string;
 		std::string sec_spendKey_string;
 		//
 		std::vector<cryptonote::tx_destination_entry> dsts;
 		std::vector<transfer_details> transfers;
+		std::function<bool(std::vector<std::vector<get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn;
+		//
 		uint64_t blockchain_size;
 		const uint64_t unlock_time;
 		uint32_t priority;
@@ -204,14 +207,16 @@ namespace monero_transfer_utils
 	};
 	struct CreateTx_RetVals
 	{
+		CreateTx_RetVals() = delete; // disallow `CreateTx_RetVals foo;` default constructor
+		//
 		bool didError;
-		std::string err_string;
+		std::string err_string; // this is not defined when didError!=true
 		//
 		signed_tx_set signed_tx_set;
 	};
 	bool create_signed_transaction( // returns !didError
 		const CreateTx_Args &args,
-		CreateTx_RetVals &retVals
+		CreateTx_RetVals &retVals // initializes retVals for you
 	);
 	//
 	// Shared / Utility / Common - Functions
@@ -225,6 +230,7 @@ namespace monero_transfer_utils
 		const transfer_container &transfers,
 		std::vector<cryptonote::tx_destination_entry> dsts,
 		const std::list<size_t> selected_transfers,
+		const std::function<bool(std::vector<std::vector<get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn,
 		size_t fake_outputs_count,
 		std::vector<std::vector<get_outs_entry>> &outs,
 		uint64_t unlock_time,
@@ -241,6 +247,7 @@ namespace monero_transfer_utils
 		const transfer_container &transfers,
 		const std::vector<cryptonote::tx_destination_entry>& dsts,
 		const std::list<size_t> selected_transfers,
+		const std::function<bool(std::vector<std::vector<get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn,
 		size_t fake_outputs_count,
 		std::vector<std::vector<get_outs_entry>> &outs,
 		uint64_t unlock_time,

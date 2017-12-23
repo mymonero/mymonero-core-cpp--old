@@ -80,8 +80,6 @@ bool monero_transfer_utils::create_signed_transaction(
 	const CreateTx_Args &args,
 	CreateTx_RetVals &retVals
 ) {
-	retVals = {};
-	//
 	std::vector<size_t> unused_transfers_indices;
 	std::vector<size_t> unused_dust_indices;
 	uint64_t needed_money;
@@ -303,6 +301,38 @@ bool monero_transfer_utils::create_signed_transaction(
 		account_keys.m_account_address = address;
 	}
 	//
+	// Detect hash8 or hash32 char hex string as pid and configure 'extra' accordingly
+	// TODO: factor this into monero_paymentID_utils
+	std::vector<uint8_t> extra;
+	bool payment_id_seen = false;
+	{
+		if (args.optl__payment_id_string) {
+			std::string payment_id_str = *args.optl__payment_id_string; // copy
+			//
+			crypto::hash payment_id;
+			bool r = monero_paymentID_utils::parse_long_payment_id(payment_id_str, payment_id);
+			if (r) {
+				std::string extra_nonce;
+				cryptonote::set_payment_id_to_tx_extra_nonce(extra_nonce, payment_id);
+				r = cryptonote::add_extra_nonce_to_tx_extra(extra, extra_nonce);
+			} else {
+				crypto::hash8 payment_id8;
+				r = monero_paymentID_utils::parse_short_payment_id(payment_id_str, payment_id8);
+				if (r) {
+					std::string extra_nonce;
+					cryptonote::set_encrypted_payment_id_to_tx_extra_nonce(extra_nonce, payment_id8);
+					r = cryptonote::add_extra_nonce_to_tx_extra(extra, extra_nonce);
+				}
+			}
+			if (!r) {
+				retVals.didError = true;
+				retVals.err_string = "payment id has invalid format, expected 16 or 64 character hex string";
+				return false;
+			}
+			payment_id_seen = true;
+		}
+	}
+	//
 	unsigned int original_output_index = 0;
 	while (
 		(!dsts.empty() && dsts[0].amount > 0) // - we have something to send
@@ -423,38 +453,6 @@ bool monero_transfer_utils::create_signed_transaction(
 			try_tx = dsts.empty() || (estimated_rct_tx_size >= TX_SIZE_TARGET(upper_transaction_size_limit));
 		}
 		//
-		// Detect hash8 or hash32 char hex string as pid and configure 'extra' accordingly
-		// TODO: factor this into monero_paymentID_utils
-		std::vector<uint8_t> extra;
-		bool payment_id_seen = false;
-		{
-			if (args.optl__payment_id_string) {
-				std::string payment_id_str = *args.optl__payment_id_string; // copy
-				//
-				crypto::hash payment_id;
-				bool r = monero_paymentID_utils::parse_long_payment_id(payment_id_str, payment_id);
-				if (r) {
-					std::string extra_nonce;
-					cryptonote::set_payment_id_to_tx_extra_nonce(extra_nonce, payment_id);
-					r = cryptonote::add_extra_nonce_to_tx_extra(extra, extra_nonce);
-				} else {
-					crypto::hash8 payment_id8;
-					r = monero_paymentID_utils::parse_short_payment_id(payment_id_str, payment_id8);
-					if (r) {
-						std::string extra_nonce;
-						cryptonote::set_encrypted_payment_id_to_tx_extra_nonce(extra_nonce, payment_id8);
-						r = cryptonote::add_extra_nonce_to_tx_extra(extra, extra_nonce);
-					}
-				}
-				if (!r) {
-					retVals.didError = true;
-					retVals.err_string = "payment id has invalid format, expected 16 or 64 character hex string";
-					return false;
-				}
-				payment_id_seen = true;
-			}
-		}
-		//
 		if (try_tx) {
 			cryptonote::transaction test_tx;
 			pending_tx test_ptx;
@@ -465,9 +463,9 @@ bool monero_transfer_utils::create_signed_transaction(
 			bool didSucceed = false;
 			TransferSelected_ErrRetVals transferSelected_err_retVals;
 			if (use_rct) {
-				didSucceed = _transfer_selected_rct(account_keys, transfers, tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra, test_tx, test_ptx, is_testnet, transferSelected_err_retVals);
+				didSucceed = _transfer_selected_rct(account_keys, transfers, tx.dsts, tx.selected_transfers, args.get_random_outs_fn, fake_outs_count, outs, unlock_time, needed_fee, extra, test_tx, test_ptx, is_testnet, transferSelected_err_retVals);
 			} else {
-				didSucceed = _transfer_selected_nonrct(account_keys, transfers, tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra, detail::digit_split_strategy, tx_dust_policy(::config::DEFAULT_DUST_THRESHOLD), test_tx, test_ptx, is_testnet, transferSelected_err_retVals);
+				didSucceed = _transfer_selected_nonrct(account_keys, transfers, tx.dsts, tx.selected_transfers, args.get_random_outs_fn, fake_outs_count, outs, unlock_time, needed_fee, extra, detail::digit_split_strategy, tx_dust_policy(::config::DEFAULT_DUST_THRESHOLD), test_tx, test_ptx, is_testnet, transferSelected_err_retVals);
 			}
 			if (didSucceed == false) {
 				if (transferSelected_err_retVals.didError != true) {
@@ -519,9 +517,9 @@ bool monero_transfer_utils::create_signed_transaction(
 				do {
 					TransferSelected_ErrRetVals transferSelected_err_retVals;
 					if (use_rct) {
-						didSucceed = _transfer_selected_rct(account_keys, transfers, tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra, test_tx, test_ptx, is_testnet, transferSelected_err_retVals);
+						didSucceed = _transfer_selected_rct(account_keys, transfers, tx.dsts, tx.selected_transfers, args.get_random_outs_fn, fake_outs_count, outs, unlock_time, needed_fee, extra, test_tx, test_ptx, is_testnet, transferSelected_err_retVals);
 					} else {
-						didSucceed = _transfer_selected_nonrct(account_keys, transfers, tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra, detail::digit_split_strategy, tx_dust_policy(::config::DEFAULT_DUST_THRESHOLD), test_tx, test_ptx, is_testnet, transferSelected_err_retVals);
+						didSucceed = _transfer_selected_nonrct(account_keys, transfers, tx.dsts, tx.selected_transfers, args.get_random_outs_fn, fake_outs_count, outs, unlock_time, needed_fee, extra, detail::digit_split_strategy, tx_dust_policy(::config::DEFAULT_DUST_THRESHOLD), test_tx, test_ptx, is_testnet, transferSelected_err_retVals);
 					}
 					if (didSucceed == false) {
 						if (transferSelected_err_retVals.didError != true) {
@@ -593,6 +591,7 @@ bool monero_transfer_utils::_transfer_selected_nonrct(
 	const transfer_container &transfers,
 	const std::vector<cryptonote::tx_destination_entry>& dsts,
 	const std::list<size_t> selected_transfers,
+	const std::function<bool(std::vector<std::vector<get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn,
 	size_t fake_outs_count,
 	std::vector<std::vector<get_outs_entry>> &outs,
 	uint64_t unlock_time,
@@ -648,17 +647,14 @@ bool monero_transfer_utils::_transfer_selected_nonrct(
 		// TODO: error::not_enough_money, found_money, needed_money - fee, fee
 		return false;
 	}
-	
 	if (outs.empty()) {
-		// TODO / FIXME:
-		// I'm thinking possibly remove this and/or just throw exception by this point… wallet should surely have detected empty outs by now?
-		//		get_outs(outs, selected_transfers, fake_outs_count); // may throw
-		//
-		// TODO: temporary or permanent?
-		err_retVals.didError = true;
-		err_retVals.err_string = "No usable outputs";
-		//
-		return false;
+		bool r = get_random_outs_fn(outs, selected_transfers, fake_outs_count);
+		if (r != true) {
+			err_retVals.didError = false;
+			err_retVals.err_string = "Unable to get random outputs";
+			// TODO: error:: code?
+			return false;
+		}
 	}
 	//prepare inputs
 	LOG_PRINT_L2("preparing outputs");
@@ -789,6 +785,7 @@ bool monero_transfer_utils::_transfer_selected_rct(
 	const transfer_container &transfers,
 	std::vector<cryptonote::tx_destination_entry> dsts,
 	const std::list<size_t> selected_transfers,
+	const std::function<bool(std::vector<std::vector<get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn,
 	size_t fake_outs_count,
 	std::vector<std::vector<get_outs_entry>> &outs,
 	uint64_t unlock_time,
@@ -844,15 +841,13 @@ bool monero_transfer_utils::_transfer_selected_rct(
 		return false;
 	}
 	if (outs.empty()) {
-		// TODO / FIXME:
-		// I'm thinking possibly remove this and/or just throw exception by this point… wallet should surely have detected empty outs by now?
-//		get_outs(outs, selected_transfers, fake_outs_count); // may throw
-		//
-		// TODO: temporary or permanent?
-		err_retVals.didError = true;
-		err_retVals.err_string = "No usable outputs";
-		//
-		return false;
+		bool r = get_random_outs_fn(outs, selected_transfers, fake_outs_count);
+		if (r != true) {
+			err_retVals.didError = false;
+			err_retVals.err_string = "Unable to get random outputs";
+			// TODO: error:: code?
+			return false;
+		}
 	}
 	// prepare inputs
 	LOG_PRINT_L2("preparing outputs");
