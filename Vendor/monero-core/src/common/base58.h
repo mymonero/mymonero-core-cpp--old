@@ -33,16 +33,14 @@
 #include <cstdint>
 #include <string>
 
-#include <boost/utility/string_ref.hpp>
-
 namespace tools
 {
   namespace base58
   {
     std::string encode(const std::string& data);
-    bool decode(boost::string_ref enc, std::string& data);
+    bool decode(const std::string& enc, std::string& data);
 
     std::string encode_addr(uint64_t tag, const std::string& data);
-    bool decode_addr(boost::string_ref addr, uint64_t& tag, std::string& data);
+    bool decode_addr(std::string addr, uint64_t& tag, std::string& data);
   }
 }

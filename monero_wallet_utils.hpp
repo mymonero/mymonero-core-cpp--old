@@ -104,7 +104,7 @@ namespace monero_wallet_utils
 		bool isInViewOnlyMode; // !sec_seed && !sec_spendKey
 	};
 	bool validate_wallet_components_with( // returns !didError
-		WalletComponentsToValidate &inputs,
+		const WalletComponentsToValidate &inputs,
 		WalletComponentsValidationResults &outputs
 	);
 }

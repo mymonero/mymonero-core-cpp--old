@@ -34,9 +34,9 @@
 //
 #include "monero_key_utils.hpp"
 #include "cryptonote_basic.h"
-#include "cryptonote_protocol/blobdatatype.h"
+#include "cryptonote_basic/blobdatatype.h"
 //
-#include "include_base_utils.h"
+#include "string_tools.h"
 using namespace epee;
 //
 boost::optional<crypto::secret_key> monero_key_utils::valid_sec_key_from(

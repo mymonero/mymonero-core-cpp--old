@@ -28,6 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <boost/lexical_cast.hpp>
 #include "misc_log_ex.h"
 #include "rctOps.h"
 using namespace crypto;
@@ -220,6 +221,11 @@ namespace rct {
         ge_p3_tobytes(AB.bytes, &A2);
     }
 
+    rct::key addKeys(const key &A, const key &B) {
+      key k;
+      addKeys(k, A, B);
+      return k;
+    }
 
     //addKeys1
     //aGB = aG + B where a is a scalar, G is the basepoint, and B is a point
@@ -254,6 +260,15 @@ namespace rct {
         ge_p3 A2;
         CHECK_AND_ASSERT_THROW_MES_L1(ge_frombytes_vartime(&A2, A.bytes) == 0, "ge_frombytes_vartime failed at "+boost::lexical_cast<std::string>(__LINE__));
         ge_double_scalarmult_precomp_vartime(&rv, a.bytes, &A2, b.bytes, B);
+        ge_tobytes(aAbB.bytes, &rv);
+    }
+
+    //addKeys3
+    //aAbB = a*A + b*B where a, b are scalars, A, B are curve points
+    //A and B must be input after applying "precomp"
+    void addKeys3(key &aAbB, const key &a, const ge_dsmp A, const key &b, const ge_dsmp B) {
+        ge_p2 rv;
+        ge_double_scalarmult_precomp_vartime2(&rv, a.bytes, A, b.bytes, B);
         ge_tobytes(aAbB.bytes, &rv);
     }
 

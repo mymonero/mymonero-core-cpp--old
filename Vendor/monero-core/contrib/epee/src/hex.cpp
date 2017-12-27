@@ -35,6 +35,23 @@
 
 namespace epee
 {
+  namespace
+  {
+    template<typename T>
+    void write_hex(T&& out, const span<const std::uint8_t> src)
+    {
+      static constexpr const char hex[] = u8"0123456789abcdef";
+      static_assert(sizeof(hex) == 17, "bad string size");
+      for (const std::uint8_t byte : src)
+      {
+        *out = hex[byte >> 4];
+        ++out;
+        *out = hex[byte & 0x0F];
+        ++out;
+      }
+    }
+  }
+
   std::string to_hex::string(const span<const std::uint8_t> src)
   {
     if (std::numeric_limits<std::size_t>::max() / 2 < src.size())

@@ -48,6 +48,4 @@ namespace monero_key_utils
 	);
 }
 
-CRYPTO_MAKE_COMPARABLE(crypto::secret_key) // while waiting for this to be merged to monero-core
-
 #endif /* monero_key_utils_hpp */

@@ -36,10 +36,9 @@
 #include "monero_wallet_utils.hpp"
 #include <boost/algorithm/string.hpp>
 #include "cryptonote_basic/account.h"
-#include "monero_address_utils.hpp"
 #include "monero_key_utils.hpp"
 //
-#include "include_base_utils.h"
+#include "string_tools.h"
 using namespace epee;
 //
 extern "C" {
@@ -144,21 +143,26 @@ boost::optional<WalletDescription> monero_wallet_utils::wallet_with(
 }
 
 bool monero_wallet_utils::validate_wallet_components_with(
-	monero_wallet_utils::WalletComponentsToValidate &inputs,
+	const monero_wallet_utils::WalletComponentsToValidate &inputs,
 	monero_wallet_utils::WalletComponentsValidationResults &outputs
 )
 { // TODO: how can the err_strings be prepared for localization?
 	outputs = {};
+	bool r;
 	//
 	// Address
-	boost::optional<monero_address_utils::DecodedAddress> decoded_address__orNil = monero_address_utils::decoded_address(inputs.address_string);
-	if (!decoded_address__orNil) {
+	cryptonote::address_parse_info decoded_address_info;
+	r = cryptonote::get_account_address_from_str(
+		decoded_address_info,
+		inputs.isTestnet,
+		inputs.address_string
+	);
+	if (r == false) {
 		outputs.didError = true;
 		outputs.err_string = "Invalid address";
 		//
 		return false;
 	}
-	monero_address_utils::DecodedAddress decoded_address = *decoded_address__orNil;
 	//
 	// View key:
 	boost::optional<crypto::secret_key> sec_viewKey__orNil = monero_key_utils::valid_sec_key_from(inputs.sec_viewKey_string);
@@ -171,14 +175,14 @@ bool monero_wallet_utils::validate_wallet_components_with(
 	crypto::secret_key sec_viewKey = *sec_viewKey__orNil; // so we can use it (FIXME: does this cause a copy?)
 	// Validate pub key derived from sec view key matches decoded_address-cached pub key
 	crypto::public_key expected_pub_viewKey;
-	bool didSucceed = crypto::secret_key_to_public_key(sec_viewKey, expected_pub_viewKey);
-	if (!didSucceed) {
+	r = crypto::secret_key_to_public_key(sec_viewKey, expected_pub_viewKey);
+	if (r == false) {
 		outputs.didError = true;
 		outputs.err_string = "Invalid view key";
 		//
 		return false;
 	}
-	if (decoded_address.address_components.m_view_public_key != expected_pub_viewKey) {
+	if (decoded_address_info.address.m_view_public_key != expected_pub_viewKey) {
 		outputs.didError = true;
 		outputs.err_string = "View key does not match address";
 		//
@@ -200,16 +204,16 @@ bool monero_wallet_utils::validate_wallet_components_with(
 				return false;
 			}
 			sec_spendKey = *sec_spendKey_orNil; // so we can use it below in possible seed validation (FIXME: does this cause a copy?)
-			// Validate pub key derived from sec spend key matches decoded_address-cached pub key
+			// Validate pub key derived from sec spend key matches decoded_address_info-cached pub key
 			crypto::public_key expected_pub_spendKey;
-			bool didSucceed = crypto::secret_key_to_public_key(sec_spendKey, expected_pub_spendKey);
-			if (!didSucceed) {
+			r = crypto::secret_key_to_public_key(sec_spendKey, expected_pub_spendKey);
+			if (r == false) {
 				outputs.didError = true;
 				outputs.err_string = "Invalid spend key";
 				//
 				return false;
 			}
-			if (decoded_address.address_components.m_spend_public_key != expected_pub_spendKey) {
+			if (decoded_address_info.address.m_spend_public_key != expected_pub_spendKey) {
 				outputs.didError = true;
 				outputs.err_string = "Spend key does not match address";
 				//
@@ -236,8 +240,8 @@ bool monero_wallet_utils::validate_wallet_components_with(
 			// TODO: assert sec_spendKey initialized?
 			if (expected_account__sec_viewKey != sec_viewKey
 				|| expected_account__sec_spendKey != sec_spendKey
-				|| expected_account_keys.m_account_address.m_view_public_key != decoded_address.address_components.m_view_public_key
-				|| expected_account_keys.m_account_address.m_spend_public_key != decoded_address.address_components.m_spend_public_key) {
+				|| expected_account_keys.m_account_address.m_view_public_key != decoded_address_info.address.m_view_public_key
+				|| expected_account_keys.m_account_address.m_spend_public_key != decoded_address_info.address.m_spend_public_key) {
 				outputs.didError = true;
 				outputs.err_string = "Seed does not match generated keys";
 				//
@@ -247,8 +251,8 @@ bool monero_wallet_utils::validate_wallet_components_with(
 			outputs.isInViewOnlyMode = false; // TODO: should this ensure that sec_spendKey is not nil? spendKey should always be available if the seed is…
 		}
 	}
-	outputs.pub_viewKey_string = string_tools::pod_to_hex(decoded_address.address_components.m_view_public_key);
-	outputs.pub_spendKey_string = string_tools::pod_to_hex(decoded_address.address_components.m_spend_public_key);
+	outputs.pub_viewKey_string = string_tools::pod_to_hex(decoded_address_info.address.m_view_public_key);
+	outputs.pub_spendKey_string = string_tools::pod_to_hex(decoded_address_info.address.m_spend_public_key);
 	outputs.isValid = true;
 	//
 	return true;

@@ -35,9 +35,7 @@
 #ifndef RCTSIGS_H
 #define RCTSIGS_H
 
-#include <boost/optional/optional.hpp>
 #include <cstddef>
-#include <mutex>
 #include <vector>
 #include <tuple>
 
@@ -62,9 +60,6 @@ extern "C" {
 
 
 
-using namespace std;
-using namespace crypto;
-
 namespace rct {
 
     boroSig genBorromean(const key64 x, const key64 P1, const key64 P2, const bits indices);
@@ -78,7 +73,7 @@ namespace rct {
     //   the signer knows a secret key for each row in that column
     // Ver verifies that the MG sig was created correctly
     keyV keyImageV(const keyV &xx);
-    mgSig MLSAG_Gen(const key &message, const keyM & pk, const keyV & xx, const unsigned int index, size_t dsRows);
+    mgSig MLSAG_Gen(const key &message, const keyM & pk, const keyV & xx, const multisig_kLRki *kLRki, key *mscout, const unsigned int index, size_t dsRows);
     bool MLSAG_Ver(const key &message, const keyM &pk, const mgSig &sig, size_t dsRows);
     //mgSig MLSAG_Gen_Old(const keyM & pk, const keyV & xx, const int index);
 
@@ -100,8 +95,8 @@ namespace rct {
     //   this shows that sum inputs = sum outputs
     //Ver:
     //   verifies the above sig is created corretly
-    mgSig proveRctMG(const ctkeyM & pubs, const ctkeyV & inSk, const keyV &outMasks, const ctkeyV & outPk, unsigned int index, key txnFee, const key &message);
-    mgSig proveRctMGSimple(const key & message, const ctkeyV & pubs, const ctkey & inSk, const key &a , const key &Cout, unsigned int index);
+    mgSig proveRctMG(const ctkeyM & pubs, const ctkeyV & inSk, const keyV &outMasks, const ctkeyV & outPk, const multisig_kLRki *kLRki, key *mscout, unsigned int index, key txnFee, const key &message);
+    mgSig proveRctMGSimple(const key & message, const ctkeyV & pubs, const ctkey & inSk, const key &a , const key &Cout, const multisig_kLRki *kLRki, key *mscout, unsigned int index);
     bool verRctMG(const mgSig &mg, const ctkeyM & pubs, const ctkeyV & outPk, key txnFee, const key &message);
     bool verRctMGSimple(const key &message, const mgSig &mg, const ctkeyV & pubs, const key & C);
 
@@ -111,7 +106,7 @@ namespace rct {
     //populateFromBlockchain creates a keymatrix with "mixin" columns and one of the columns is inPk
     //   the return value are the key matrix, and the index where inPk was put (random).
     void getKeyFromBlockchain(ctkey & a, size_t reference_index);
-    tuple<ctkeyM, xmr_amount> populateFromBlockchain(ctkeyV inPk, int mixin);
+    std::tuple<ctkeyM, xmr_amount> populateFromBlockchain(ctkeyV inPk, int mixin);
 
     //RingCT protocol
     //genRct:
@@ -123,20 +118,20 @@ namespace rct {
     //decodeRct: (c.f. http://eprint.iacr.org/2015/1098 section 5.1.1)
     //   uses the attached ecdh info to find the amounts represented by each output commitment
     //   must know the destination private key to find the correct amount, else will return a random number
-    rctSig genRct(const key &message, const ctkeyV & inSk, const keyV & destinations, const vector<xmr_amount> & amounts, const ctkeyM &mixRing, const keyV &amount_keys, unsigned int index, ctkeyV &outSk);
-    rctSig genRct(const key &message, const ctkeyV & inSk, const ctkeyV  & inPk, const keyV & destinations, const vector<xmr_amount> & amounts, const keyV &amount_keys, const int mixin);
-    rctSig genRctSimple(const key & message, const ctkeyV & inSk, const ctkeyV & inPk, const keyV & destinations, const vector<xmr_amount> & inamounts, const vector<xmr_amount> & outamounts, const keyV &amount_keys, xmr_amount txnFee, unsigned int mixin);
-    rctSig genRctSimple(const key & message, const ctkeyV & inSk, const keyV & destinations, const vector<xmr_amount> & inamounts, const vector<xmr_amount> & outamounts, xmr_amount txnFee, const ctkeyM & mixRing, const keyV &amount_keys, const std::vector<unsigned int> & index, ctkeyV &outSk);
+    rctSig genRct(const key &message, const ctkeyV & inSk, const keyV & destinations, const std::vector<xmr_amount> & amounts, const ctkeyM &mixRing, const keyV &amount_keys, const multisig_kLRki *kLRki, multisig_out *msout, unsigned int index, ctkeyV &outSk, bool bulletproof);
+    rctSig genRct(const key &message, const ctkeyV & inSk, const ctkeyV  & inPk, const keyV & destinations, const std::vector<xmr_amount> & amounts, const keyV &amount_keys, const multisig_kLRki *kLRki, multisig_out *msout, const int mixin);
+    rctSig genRctSimple(const key & message, const ctkeyV & inSk, const ctkeyV & inPk, const keyV & destinations, const std::vector<xmr_amount> & inamounts, const std::vector<xmr_amount> & outamounts, const keyV &amount_keys, const std::vector<multisig_kLRki> *kLRki, multisig_out *msout, xmr_amount txnFee, unsigned int mixin);
+    rctSig genRctSimple(const key & message, const ctkeyV & inSk, const keyV & destinations, const std::vector<xmr_amount> & inamounts, const std::vector<xmr_amount> & outamounts, xmr_amount txnFee, const ctkeyM & mixRing, const keyV &amount_keys, const std::vector<multisig_kLRki> *kLRki, multisig_out *msout, const std::vector<unsigned int> & index, ctkeyV &outSk, bool bulletproof);
     bool verRct(const rctSig & rv, bool semantics);
     static inline bool verRct(const rctSig & rv) { return verRct(rv, true) && verRct(rv, false); }
     bool verRctSimple(const rctSig & rv, bool semantics);
     static inline bool verRctSimple(const rctSig & rv) { return verRctSimple(rv, true) && verRctSimple(rv, false); }
-
-    boost::optional<xmr_amount> decodeRct(const key& C, const key& mask, const key& amount, const key& sk);
     xmr_amount decodeRct(const rctSig & rv, const key & sk, unsigned int i, key & mask);
     xmr_amount decodeRct(const rctSig & rv, const key & sk, unsigned int i);
     xmr_amount decodeRctSimple(const rctSig & rv, const key & sk, unsigned int i, key & mask);
     xmr_amount decodeRctSimple(const rctSig & rv, const key & sk, unsigned int i);
+
+    bool signMultisig(rctSig &rv, const std::vector<unsigned int> &indices, const keyV &k, const multisig_out &msout, const key &secret_key);
 }
 #endif  /* RCTSIGS_H */
 

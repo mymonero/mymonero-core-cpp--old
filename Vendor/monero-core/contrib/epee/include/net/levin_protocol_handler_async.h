@@ -35,6 +35,8 @@
 
 #include "levin_base.h"
 #include "misc_language.h"
+#include "syncobj.h"
+#include "misc_os_dependent.h"
 
 #include <random>
 #include <chrono>
@@ -72,9 +74,11 @@ class async_protocol_handler_config
 
   friend class async_protocol_handler<t_connection_context>;
 
+  levin_commands_handler<t_connection_context>* m_pcommands_handler;
+  void (*m_pcommands_handler_destroy)(levin_commands_handler<t_connection_context>*);
+
 public:
   typedef t_connection_context connection_context;
-  levin_commands_handler<t_connection_context>* m_pcommands_handler;
   uint64_t m_max_packet_size; 
   uint64_t m_invoke_timeout;
 
@@ -91,8 +95,9 @@ public:
   template<class callback_t>
   bool for_connection(const boost::uuids::uuid &connection_id, callback_t cb);
   size_t get_connections_count();
+  void set_handler(levin_commands_handler<t_connection_context>* handler, void (*destroy)(levin_commands_handler<t_connection_context>*) = NULL);
 
-  async_protocol_handler_config():m_pcommands_handler(NULL), m_max_packet_size(LEVIN_DEFAULT_MAX_PACKET_SIZE)
+  async_protocol_handler_config():m_pcommands_handler(NULL), m_pcommands_handler_destroy(NULL), m_max_packet_size(LEVIN_DEFAULT_MAX_PACKET_SIZE)
   {}
   void del_out_connections(size_t count);
 };
@@ -740,9 +745,15 @@ void async_protocol_handler_config<t_connection_context>::del_out_connections(si
 	shuffle(out_connections.begin(), out_connections.end(), std::default_random_engine(seed));
 	while (count > 0 && out_connections.size() > 0)
 	{
-		close(*out_connections.begin());
-		del_connection(m_connects.at(*out_connections.begin()));
+		boost::uuids::uuid connection_id = *out_connections.begin();
+		async_protocol_handler<t_connection_context> *connection = find_connection(connection_id);
+		// we temporarily ref the connection so it doesn't drop from the m_connects table
+		// when we close it
+		connection->start_outer_call();
+		close(connection_id);
+		del_connection(m_connects.at(connection_id));
 		out_connections.erase(out_connections.begin());
+		connection->finish_outer_call();
 		--count;
 	}
 	
@@ -823,6 +834,15 @@ size_t async_protocol_handler_config<t_connection_context>::get_connections_coun
 {
   CRITICAL_REGION_LOCAL(m_connects_lock);
   return m_connects.size();
+}
+//------------------------------------------------------------------------------------------
+template<class t_connection_context>
+void async_protocol_handler_config<t_connection_context>::set_handler(levin_commands_handler<t_connection_context>* handler, void (*destroy)(levin_commands_handler<t_connection_context>*))
+{
+  if (m_pcommands_handler && m_pcommands_handler_destroy)
+    (*m_pcommands_handler_destroy)(m_pcommands_handler);
+  m_pcommands_handler = handler;
+  m_pcommands_handler_destroy = destroy;
 }
 //------------------------------------------------------------------------------------------
 template<class t_connection_context>

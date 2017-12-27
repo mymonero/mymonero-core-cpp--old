@@ -39,20 +39,6 @@ namespace epee
 {
   struct to_hex
   {
-    template<typename T>
-    static void write_hex(T&& out, const span<const std::uint8_t> src)
-    {
-      static constexpr const char hex[] = u8"0123456789abcdef";
-      static_assert(sizeof(hex) == 17, "bad string size");
-      for (const std::uint8_t byte : src)
-      {
-        *out = hex[byte >> 4];
-        ++out;
-        *out = hex[byte & 0x0F];
-        ++out;
-      }
-    }
-
     //! \return A std::string containing hex of `src`.
     static std::string string(const span<const std::uint8_t> src);
 

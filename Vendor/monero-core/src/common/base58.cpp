@@ -34,8 +34,6 @@
 #include <string>
 #include <vector>
 
-#include <boost/range/iterator_range_core.hpp>
-
 #include "crypto/hash.h"
 #include "int-util.h"
 #include "util.h"
@@ -47,12 +45,12 @@ namespace tools
   {
     namespace
     {
-      constexpr const char alphabet[] = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-      constexpr const size_t alphabet_size = sizeof(alphabet) - 1;
-      constexpr const size_t encoded_block_sizes[] = {0, 2, 3, 5, 6, 7, 9, 10, 11};
-      constexpr const size_t full_block_size = sizeof(encoded_block_sizes) / sizeof(encoded_block_sizes[0]) - 1;
-      constexpr const size_t full_encoded_block_size = encoded_block_sizes[full_block_size];
-      constexpr const size_t addr_checksum_size = 4;
+      const char alphabet[] = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+      const size_t alphabet_size = sizeof(alphabet) - 1;
+      const size_t encoded_block_sizes[] = {0, 2, 3, 5, 6, 7, 9, 10, 11};
+      const size_t full_block_size = sizeof(encoded_block_sizes) / sizeof(encoded_block_sizes[0]) - 1;
+      const size_t full_encoded_block_size = encoded_block_sizes[full_block_size];
+      const size_t addr_checksum_size = 4;
 
       struct reverse_alphabet
       {
@@ -81,30 +79,30 @@ namespace tools
 
       reverse_alphabet reverse_alphabet::instance;
 
-      class decoded_block_size_
+      struct decoded_block_sizes
       {
-        static constexpr int data[] = {0, -1, 1, 2, -1, 3, 4, 5, -1, 6, 7, 8};
-        static constexpr bool check(size_t i) noexcept {
-            return i > full_block_size ?
-                true : data[encoded_block_sizes[i]] == i ?
-                    check(i + 1) : false;
-        }
-
-      public:
-        constexpr decoded_block_size_()
+        decoded_block_sizes()
         {
-          static_assert(check(0), "bad decoded block size table");
+          m_data.resize(encoded_block_sizes[full_block_size] + 1, -1);
+          for (size_t i = 0; i <= full_block_size; ++i)
+          {
+            m_data[encoded_block_sizes[i]] = static_cast<int>(i);
+          }
         }
 
-        int operator()(size_t encoded_block_size) const noexcept
+        int operator()(size_t encoded_block_size) const
         {
           assert(encoded_block_size <= full_encoded_block_size);
-          return data[encoded_block_size];
+          return m_data[encoded_block_size];
         }
+
+        static decoded_block_sizes instance;
+
+      private:
+        std::vector<int> m_data;
       };
 
-      constexpr const int decoded_block_size_::data[];
-      constexpr const decoded_block_size_ decoded_block_size;
+      decoded_block_sizes decoded_block_sizes::instance;
 
       uint64_t uint_8be_to_64(const uint8_t* data, size_t size)
       {
@@ -113,13 +111,13 @@ namespace tools
         uint64_t res = 0;
         switch (9 - size)
         {
-        case 1:            res |= *data++;
-        case 2: res <<= 8; res |= *data++;
-        case 3: res <<= 8; res |= *data++;
-        case 4: res <<= 8; res |= *data++;
-        case 5: res <<= 8; res |= *data++;
-        case 6: res <<= 8; res |= *data++;
-        case 7: res <<= 8; res |= *data++;
+        case 1:            res |= *data++; /* FALLTHRU */
+        case 2: res <<= 8; res |= *data++; /* FALLTHRU */
+        case 3: res <<= 8; res |= *data++; /* FALLTHRU */
+        case 4: res <<= 8; res |= *data++; /* FALLTHRU */
+        case 5: res <<= 8; res |= *data++; /* FALLTHRU */
+        case 6: res <<= 8; res |= *data++; /* FALLTHRU */
+        case 7: res <<= 8; res |= *data++; /* FALLTHRU */
         case 8: res <<= 8; res |= *data; break;
         default: assert(false);
         }
@@ -154,7 +152,7 @@ namespace tools
       {
         assert(1 <= size && size <= full_encoded_block_size);
 
-        int res_size = decoded_block_size(size);
+        int res_size = decoded_block_sizes::instance(size);
         if (res_size <= 0)
           return false; // Invalid block size
 
@@ -179,29 +177,6 @@ namespace tools
           return false; // Overflow
 
         uint_64_to_8be(res_num, res_size, reinterpret_cast<uint8_t*>(res));
-
-        return true;
-      }
-
-      bool decode_internal(boost::string_ref enc, boost::iterator_range<char*> data)
-      {
-        assert(!enc.empty());
-        while (full_encoded_block_size <= enc.size())
-        {
-          assert(full_block_size <= data.size());
-          if (!decode_block(enc.data(), full_encoded_block_size, data.begin()))
-            return false;
-          enc.remove_prefix(full_encoded_block_size);
-          data.advance_begin(full_block_size);
-        }
-
-        if (!enc.empty())
-        {
-          assert(0 <= decoded_block_size(enc.size()));
-          assert(decoded_block_size(enc.size()) <= data.size());
-          if (!decode_block(enc.data(), enc.size(), data.begin()))
-            return false;
-        }
 
         return true;
       }
@@ -230,7 +205,7 @@ namespace tools
       return res;
     }
 
-    bool decode(boost::string_ref enc, std::string& data)
+    bool decode(const std::string& enc, std::string& data)
     {
       if (enc.empty())
       {
@@ -238,15 +213,28 @@ namespace tools
         return true;
       }
 
-      const size_t full_block_count = enc.size() / full_encoded_block_size;
-      const size_t last_block_size = enc.size() % full_encoded_block_size;
-      const int last_block_decoded_size = decoded_block_size(last_block_size);
+      size_t full_block_count = enc.size() / full_encoded_block_size;
+      size_t last_block_size = enc.size() % full_encoded_block_size;
+      int last_block_decoded_size = decoded_block_sizes::instance(last_block_size);
       if (last_block_decoded_size < 0)
         return false; // Invalid enc length
-      const size_t data_size = full_block_count * full_block_size + last_block_decoded_size;
+      size_t data_size = full_block_count * full_block_size + last_block_decoded_size;
 
       data.resize(data_size, 0);
-      return decode_internal(enc, boost::iterator_range<char*>(&data[0], &data[0] + data.size()));
+      for (size_t i = 0; i < full_block_count; ++i)
+      {
+        if (!decode_block(enc.data() + i * full_encoded_block_size, full_encoded_block_size, &data[i * full_block_size]))
+          return false;
+      }
+
+      if (0 < last_block_size)
+      {
+        if (!decode_block(enc.data() + full_block_count * full_encoded_block_size, last_block_size,
+          &data[full_block_count * full_block_size]))
+          return false;
+      }
+
+      return true;
     }
 
     std::string encode_addr(uint64_t tag, const std::string& data)
@@ -259,31 +247,25 @@ namespace tools
       return encode(buf);
     }
 
-    bool decode_addr(boost::string_ref addr, uint64_t& tag, std::string& data)
+    bool decode_addr(std::string addr, uint64_t& tag, std::string& data)
     {
       std::string addr_data;
-      if (!decode(addr, addr_data)) return false;
+      bool r = decode(addr, addr_data);
+      if (!r) return false;
       if (addr_data.size() <= addr_checksum_size) return false;
 
-      {
-        boost::string_ref checksummed(addr_data);
-        checksummed.remove_suffix(addr_checksum_size);
+      std::string checksum(addr_checksum_size, '\0');
+      checksum = addr_data.substr(addr_data.size() - addr_checksum_size);
 
-        const boost::string_ref checksum(checksummed.cend(), addr_checksum_size);
-        const crypto::hash hash = crypto::cn_fast_hash(checksummed.data(), checksummed.size());
+      addr_data.resize(addr_data.size() - addr_checksum_size);
+      crypto::hash hash = crypto::cn_fast_hash(addr_data.data(), addr_data.size());
+      std::string expected_checksum(reinterpret_cast<const char*>(&hash), addr_checksum_size);
+      if (expected_checksum != checksum) return false;
 
-        static_assert(addr_checksum_size <= sizeof(crypto::hash), "unexpected hash size");
-        if (std::memcmp(checksum.data(), &hash, addr_checksum_size) != 0) return false;
-
-        assert(checksummed.size() <= addr_data.size());
-        addr_data.resize(checksummed.size());
-      }
-
-      const int read = tools::read_varint(addr_data.begin(), addr_data.end(), tag);
+      int read = tools::read_varint(addr_data.begin(), addr_data.end(), tag);
       if (read <= 0) return false;
 
-      addr_data.erase(0, read);
-      data = std::move(addr_data);
+      data = addr_data.substr(read);
       return true;
     }
   }

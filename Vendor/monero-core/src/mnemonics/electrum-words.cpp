@@ -61,6 +61,8 @@
 #include "portuguese.h"
 #include "japanese.h"
 #include "russian.h"
+#include "esperanto.h"
+#include "lojban.h"
 #include "english_old.h"
 #include "language_base.h"
 #include "singleton.h"
@@ -95,6 +97,8 @@ namespace
       Language::Singleton<Language::Portuguese>::instance(),
       Language::Singleton<Language::Japanese>::instance(),
       Language::Singleton<Language::Russian>::instance(),
+      Language::Singleton<Language::Esperanto>::instance(),
+      Language::Singleton<Language::Lojban>::instance(),
       Language::Singleton<Language::EnglishOld>::instance()
     });
     Language::Base *fallback = NULL;
@@ -232,11 +236,13 @@ namespace crypto
     /*!
      * \brief Converts seed words to bytes (secret key).
      * \param  words           String containing the words separated by spaces.
-     * \param  dst             To put the secret key restored from the words.
+     * \param  dst             To put the secret data restored from the words.
+     * \param  len             The number of bytes to expect, 0 if unknown
+     * \param  duplicate       If true and len is not zero, we accept half the data, and duplicate it
      * \param  language_name   Language of the seed as found gets written here.
      * \return                 false if not a multiple of 3 words, or if word is not in the words list
      */
-    bool words_to_bytes(std::string words, crypto::secret_key& dst,
+    bool words_to_bytes(std::string words, std::string& dst, size_t len, bool duplicate,
       std::string &language_name)
     {
       std::vector<std::string> seed;
@@ -244,15 +250,23 @@ namespace crypto
       boost::algorithm::trim(words);
       boost::split(seed, words, boost::is_any_of(" "), boost::token_compress_on);
 
-      // error on non-compliant word list
-      if (seed.size() != seed_length/2 && seed.size() != seed_length &&
-        seed.size() != seed_length + 1)
-      {
+      if (len % 4)
         return false;
-      }
 
-      // If it is seed with a checksum.
-      bool has_checksum = seed.size() == (seed_length + 1);
+      bool has_checksum = true;
+      if (len)
+      {
+        // error on non-compliant word list
+        const size_t expected = len * 8 * 3 / 32;
+        if (seed.size() != expected/2 && seed.size() != expected &&
+          seed.size() != expected + 1)
+        {
+          return false;
+        }
+
+        // If it is seed with a checksum.
+        has_checksum = seed.size() == (expected + 1);
+      }
 
       std::vector<uint32_t> matched_indices;
       Language::Base *language;
@@ -286,17 +300,40 @@ namespace crypto
 
         if (!(val % word_list_length == w1)) return false;
 
-        memcpy(dst.data + i * 4, &val, 4);  // copy 4 bytes to position
+        dst.append((const char*)&val, 4);  // copy 4 bytes to position
       }
 
-      std::string wlist_copy = words;
-      if (seed.size() == seed_length/2)
+      if (len > 0 && duplicate)
       {
-        memcpy(dst.data+16, dst.data, 16);  // if electrum 12-word seed, duplicate
-        wlist_copy += ' ';
-        wlist_copy += words;
+        const size_t expected = len * 3 / 32;
+        std::string wlist_copy = words;
+        if (seed.size() == expected/2)
+        {
+          dst.append(dst);                    // if electrum 12-word seed, duplicate
+          wlist_copy += ' ';
+          wlist_copy += words;
+        }
       }
 
+      return true;
+    }
+
+    /*!
+     * \brief Converts seed words to bytes (secret key).
+     * \param  words           String containing the words separated by spaces.
+     * \param  dst             To put the secret key restored from the words.
+     * \param  language_name   Language of the seed as found gets written here.
+     * \return                 false if not a multiple of 3 words, or if word is not in the words list
+     */
+    bool words_to_bytes(std::string words, crypto::secret_key& dst,
+      std::string &language_name)
+    {
+      std::string s;
+      if (!words_to_bytes(words, s, sizeof(dst), true, language_name))
+        return false;
+      if (s.size() != sizeof(dst))
+        return false;
+      dst = *(const crypto::secret_key*)s.data();
       return true;
     }
 
@@ -307,11 +344,11 @@ namespace crypto
      * \param  language_name Seed language name
      * \return               true if successful false if not. Unsuccessful if wrong key size.
      */
-    bool bytes_to_words(const crypto::secret_key& src, std::string& words,
+    bool bytes_to_words(const char *src, size_t len, std::string& words,
       const std::string &language_name)
     {
 
-      if (sizeof(src.data) % 4 != 0 || sizeof(src.data) == 0) return false;
+      if (len % 4 != 0 || len == 0) return false;
 
       Language::Base *language;
       if (language_name == "English")
@@ -354,6 +391,14 @@ namespace crypto
       {
         language = Language::Singleton<Language::Chinese_Simplified>::instance();
       }
+      else if (language_name == "Esperanto")
+      {
+        language = Language::Singleton<Language::Esperanto>::instance();
+      }
+      else if (language_name == "Lojban")
+      {
+        language = Language::Singleton<Language::Lojban>::instance();
+      }
       else
       {
         return false;
@@ -364,13 +409,13 @@ namespace crypto
 
       uint32_t word_list_length = word_list.size();
       // 8 bytes -> 3 words.  8 digits base 16 -> 3 digits base 1626
-      for (unsigned int i=0; i < sizeof(src.data)/4; i++, words += ' ')
+      for (unsigned int i=0; i < len/4; i++, words += ' ')
       {
         uint32_t w1, w2, w3;
         
         uint32_t val;
 
-        memcpy(&val, (src.data) + (i * 4), 4);
+        memcpy(&val, src + (i * 4), 4);
 
         w1 = val % word_list_length;
         w2 = ((val / word_list_length) + w1) % word_list_length;
@@ -392,6 +437,12 @@ namespace crypto
       return true;
     }
 
+    bool bytes_to_words(const crypto::secret_key& src, std::string& words,
+      const std::string &language_name)
+    {
+      return bytes_to_words(src.data, sizeof(src), words, language_name);
+    }
+
     /*!
      * \brief Gets a list of seed languages that are supported.
      * \param languages The vector is set to the list of languages.
@@ -408,7 +459,9 @@ namespace crypto
         Language::Singleton<Language::Portuguese>::instance(),
         Language::Singleton<Language::Russian>::instance(),
         Language::Singleton<Language::Japanese>::instance(),
-        Language::Singleton<Language::Chinese_Simplified>::instance()
+        Language::Singleton<Language::Chinese_Simplified>::instance(),
+        Language::Singleton<Language::Esperanto>::instance(),
+        Language::Singleton<Language::Lojban>::instance()
       });
       for (std::vector<Language::Base*>::iterator it = language_instances.begin();
         it != language_instances.end(); it++)

@@ -41,10 +41,10 @@
 namespace command_line
 {
 
-  std::string input_line(const std::string& prompt);
-
   //! \return True if `str` is `is_iequal("y" || "yes" || `tr("yes"))`.
   bool is_yes(const std::string& str);
+  //! \return True if `str` is `is_iequal("n" || "no" || `tr("no"))`.
+  bool is_no(const std::string& str);
 
   template<typename T, bool required = false>
   struct arg_descriptor;
@@ -189,6 +189,12 @@ namespace command_line
     return !value.empty();
   }
 
+  template<typename T, bool required>
+  bool is_arg_defaulted(const boost::program_options::variables_map& vm, const arg_descriptor<T, required>& arg)
+  {
+    return vm[arg.name].defaulted();
+  }
+
 
   template<typename T, bool required>
   T get_arg(const boost::program_options::variables_map& vm, const arg_descriptor<T, required>& arg)
@@ -205,20 +211,4 @@ namespace command_line
 
   extern const arg_descriptor<bool> arg_help;
   extern const arg_descriptor<bool> arg_version;
-  extern const arg_descriptor<std::string> arg_data_dir;
-  extern const arg_descriptor<std::string> arg_testnet_data_dir;
-  extern const arg_descriptor<bool>		arg_test_drop_download;
-  extern const arg_descriptor<uint64_t>	arg_test_drop_download_height;
-  extern const arg_descriptor<int> 		arg_test_dbg_lock_sleep;
-  extern const arg_descriptor<bool, false> arg_testnet_on;
-  extern const arg_descriptor<bool> arg_dns_checkpoints;
-  extern const arg_descriptor<std::string> arg_db_type;
-  extern const arg_descriptor<std::string> arg_db_sync_mode;
-  extern const arg_descriptor<bool, false> arg_db_salvage;
-  extern const arg_descriptor<uint64_t> arg_fast_block_sync;
-  extern const arg_descriptor<uint64_t> arg_prep_blocks_threads;
-  extern const arg_descriptor<uint64_t> arg_show_time_stats;
-  extern const arg_descriptor<size_t> arg_block_sync_size;
-  extern const arg_descriptor<std::string> arg_check_updates;
-  extern const arg_descriptor<bool> arg_fluffy_blocks;
 }
