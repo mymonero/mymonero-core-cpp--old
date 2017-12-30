@@ -35,25 +35,18 @@
 #include "monero_key_utils.hpp"
 #include "cryptonote_basic.h"
 #include "cryptonote_basic/blobdatatype.h"
-//
 #include "string_tools.h"
+//
 using namespace epee;
 //
-boost::optional<crypto::secret_key> monero_key_utils::valid_sec_key_from(
-	const std::string &key_string__ref
-)
-{
-	std::string sec_key_string = key_string__ref;
-	if (sec_key_string.empty()) {
-		return boost::none;
-	}
-	cryptonote::blobdata sec_key_data;
-	bool didParse = epee::string_tools::parse_hexstr_to_binbuff(sec_key_string, sec_key_data);
-	if(!didParse || sec_key_data.size() != sizeof(crypto::secret_key)) {
-		return boost::none; // TODO: return wrapped error "invalid view key"
-	}
-	crypto::secret_key sec;
-	std::memcpy(&sec, sec_key_data.data(), sizeof(crypto::secret_key));
+void monero_key_utils::coerce_valid_sec_key_from(
+	const crypto::legacy16B_secret_key &legacy16B_mymonero_sec_seed,
+	crypto::secret_key &dst__sec_seed
+) { // cn_fast_hash legacy16B_sec_seed in order to 'pad' it to 256 bits so it can be chopped to ec_scalar
+	crypto::secret_key nonLegacy32B_sec_seed{};
+	keccak((uint8_t *)&legacy16B_mymonero_sec_seed, sizeof(crypto::legacy16B_secret_key),
+		   (uint8_t *)&dst__sec_seed, sizeof(crypto::secret_key));
 	//
-	return sec;
+	// TODO/FIXME: final confirmaton that reduce to scalar not desired here …
+	//
 }

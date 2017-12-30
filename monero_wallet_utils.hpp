@@ -38,29 +38,38 @@
 
 #include <boost/optional.hpp>
 #include "crypto.h"
+#include "monero_key_utils.hpp" // for the legacy 16 byte seed type support
 #include "cryptonote_basic.h"
 #include "cryptonote_basic_impl.h"
 #include "electrum-words.h"
 #include "mnemonics/singleton.h"
 #include "mnemonics/english.h"
 //
+//
+// Legacy seed / mnemonic utils fns
+namespace crypto
+{
+	namespace ElectrumWords
+	{
+		bool bytes_to_words(const crypto::legacy16B_secret_key& src,
+							std::string& words,
+							const std::string &language_name);
+		bool words_to_bytes(std::string words,
+							crypto::legacy16B_secret_key& dst,
+							std::string &language_name);
+		//
+		static unsigned long legacy_16B_seed_mnemonic_word_count = 13;
+		static unsigned long stable_32B_seed_mnemonic_word_count = 25;
+	}
+}
+//
 namespace monero_wallet_utils
 {
-	//
-	// Mnemonics & account seeds - Shared / Convenience
-	boost::optional<std::string> mnemonic_string_from(
-		const crypto::secret_key sec_seed,
-		const std::string &mnemonic_language__ref
-	);
-	boost::optional<crypto::secret_key> sec_seed_from(
-		const std::string &mnemonic_string,
-		std::string mnemonic_language
-	);
 	//
 	// Wallets - Types
 	struct WalletDescription
 	{
-		crypto::secret_key sec_seed;
+		std::string sec_seed_string; // as string bc it might by legacy 16B style aside from crypto::secret_key
 		//
 		std::string address_string;
 		//
@@ -71,21 +80,16 @@ namespace monero_wallet_utils
 		//
 		std::string mnemonic_string; // mnemonic_language is not returned because it must be provided to all functions which can return a WalletDescription
 	};
-	//
-	// Generating a new wallet
 	boost::optional<WalletDescription> new_wallet(
 		const std::string &mnemonic_language,
 		bool isTestnet = false
 	);
-	//
-	// Opening an existing wallet with its seed
 	boost::optional<WalletDescription> wallet_with(
 		const std::string &mnemonic_string,
 		const std::string &mnemonic_language__ptr,
 		bool isTestnet = false
 	);
 	//
-	// Opening an existing wallet with address and keys
 	struct WalletComponentsToValidate
 	{
 		std::string address_string; // Required

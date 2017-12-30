@@ -32,20 +32,44 @@
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //
-
+//
 #ifndef monero_key_utils_hpp
 #define monero_key_utils_hpp
-
+//
+#include <boost/utility/value_init.hpp>
 #include <boost/optional.hpp>
 #include "crypto.h"
-
+//
+// MyMonero legacy (16 byte) seed extensions to crypto
+namespace crypto
+{
+	POD_CLASS nonscalar_16Byte { // TODO/FIXME: improve name (more concrete)
+		char data[16];
+	};
+	using legacy16B_secret_key = tools::scrubbed<nonscalar_16Byte>;
+	static_assert(sizeof(legacy16B_secret_key) == 16, "Invalid structure size");
+	inline std::ostream &operator <<(std::ostream &o, const crypto::legacy16B_secret_key &v) {
+		epee::to_hex::formatted(o, epee::as_byte_span(v)); return o;
+	}
+	const static crypto::legacy16B_secret_key null_legacy16B_skey = boost::value_initialized<crypto::legacy16B_secret_key>();
+	//
+	static unsigned long sec_seed_bytes_length = 32;
+	static unsigned long legacy16B__sec_seed_bytes_length = 16;
+	static unsigned long sec_seed_hex_string_length = sec_seed_bytes_length * 2;
+	static unsigned long legacy16B__sec_seed_hex_string_length = legacy16B__sec_seed_bytes_length * 2;
+}
+CRYPTO_MAKE_HASHABLE(legacy16B_secret_key)
 namespace monero_key_utils
 {
-	//
-	// Functions - Accessors - Transforms/Factories - Keys
-	boost::optional<crypto::secret_key> valid_sec_key_from(
-		const std::string &key_string__ref
+	void coerce_valid_sec_key_from(
+		const crypto::legacy16B_secret_key &legacy16B_mymonero_sec_seed,
+		crypto::secret_key &dst__sec_seed
 	);
 }
-
+//
+// Shared
+namespace monero_key_utils
+{
+}
+//
 #endif /* monero_key_utils_hpp */

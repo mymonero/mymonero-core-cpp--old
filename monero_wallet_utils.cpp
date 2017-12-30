@@ -46,6 +46,22 @@ extern "C" {
 }
 //
 using namespace monero_wallet_utils;
+using namespace crypto; // for extension
+//
+bool ElectrumWords::words_to_bytes(std::string words, legacy16B_secret_key& dst, std::string &language_name)
+{
+	std::string s;
+	if (!ElectrumWords::words_to_bytes(words, s, sizeof(dst), true, language_name))
+		return false;
+	if (s.size() != sizeof(dst))
+		return false;
+	dst = *(const legacy16B_secret_key*)s.data();
+	return true;
+}
+bool ElectrumWords::bytes_to_words(const legacy16B_secret_key& src, std::string& words, const std::string &language_name)
+{
+	return ElectrumWords::bytes_to_words(src.data, sizeof(src), words, language_name);
+}
 //
 boost::optional<monero_wallet_utils::WalletDescription> monero_wallet_utils::new_wallet(
     const std::string &mnemonic_language__ref,
@@ -53,17 +69,20 @@ boost::optional<monero_wallet_utils::WalletDescription> monero_wallet_utils::new
 )
 {
 	cryptonote::account_base account{}; // this initializes the wallet and should call the default constructor
-	crypto::secret_key sec_seed = account.generate(); // NOTE: this is actually returning 'first' BUT apparently 'first' in Monero core is /actually/ the "seed" in legacy MyMonero monero_wallet_utils.js / cryptonote_utils.js (!!)… while the same legacy cryptonote_utils.js create_address(…) appears to use the name 'first' to describe the first reduction (or else hashing) of the rng seed – since the 'seed' given to cryptonote_utils.create_address(…) has already been sc_reduce32'd
+	crypto::secret_key nonLegacy32B_sec_seed = account.generate();
 	//
 	const cryptonote::account_keys& keys = account.get_keys();
 	std::string address_string = account.get_public_address_str(isTestnet); // getting the string here instead of leaving it to the consumer b/c get_public_address_str could potentially change in implementation (see TODO) so it's not right to duplicate that here
-	boost::optional<std::string> optl__mnemonic_string = monero_wallet_utils::mnemonic_string_from(sec_seed, mnemonic_language__ref);
-	if (!optl__mnemonic_string) {
+	//
+	std::string mnemonic_string;
+	bool r = crypto::ElectrumWords::bytes_to_words(nonLegacy32B_sec_seed, mnemonic_string, mnemonic_language__ref);
+	// ^-- it's OK to directly call ElectrumWords w/ crypto::secret_key as we are generating new wallet, not reading
+	if (!r) {
 		return boost::none; // TODO: return error string? e.g. 'unable to obtain mnemonic - check language'
 	}
 	const WalletDescription walletDescription =
 	{
-		sec_seed,
+		string_tools::pod_to_hex(nonLegacy32B_sec_seed),
 		//
 		address_string,
 		//
@@ -72,62 +91,58 @@ boost::optional<monero_wallet_utils::WalletDescription> monero_wallet_utils::new
 		keys.m_account_address.m_spend_public_key,
 		keys.m_account_address.m_view_public_key,
 		//
-		std::move(*optl__mnemonic_string)
+		mnemonic_string
 	};
 	//
 	return walletDescription;	
-}
-//
-boost::optional<std::string> monero_wallet_utils::mnemonic_string_from(
-	const crypto::secret_key sec_seed,
-	const std::string &mnemonic_language__ref
-)
-{
-	std::string mnemonic_string;
-	bool didSucceed = crypto::ElectrumWords::bytes_to_words(sec_seed, mnemonic_string, mnemonic_language__ref);
-	if (didSucceed == false) {
-		return boost::none; // returning 'nil' … TODO: any error (msg) to relay in future?
-	}
-	//
-	return {std::move(mnemonic_string)}; /*return mnemonic_string;*/ // <- returning optional containing moved str b/c "the compiler will implicitly construct boost::optional<std::string> by copying mnemonic_string then move the implicitly constructed object."
-}
-//
-boost::optional<crypto::secret_key> monero_wallet_utils::sec_seed_from(
-	const std::string &mnemonic_string,
-	std::string mnemonic_language // not sure why ElectrumWords::words_to_bytes can't take a ref
-)
-{
-	crypto::secret_key sec_seed;
-	bool didSucceed = crypto::ElectrumWords::words_to_bytes(mnemonic_string, sec_seed, mnemonic_language);
-	if (didSucceed == false) {
-		return boost::none; // returning 'nil' … TODO: any error (msg) to relay in future?
-	}
-	//
-	return boost::optional<crypto::secret_key>{sec_seed};
 }
 //
 boost::optional<WalletDescription> monero_wallet_utils::wallet_with(
 	const std::string &mnemonic_string_ref,
 	const std::string &mnemonic_language__ref,
 	bool isTestnet
-)
-{
+) {
 	// sanitize inputs
 	std::string mnemonic_string = mnemonic_string_ref; // copy for to_lower… TODO: any better way?
-	boost::algorithm::to_lower(mnemonic_string);
-	//
-	boost::optional<crypto::secret_key> optl__sec_seed = monero_wallet_utils::sec_seed_from(mnemonic_string, mnemonic_language__ref);
-	if (!optl__sec_seed) {
-		return boost::none; // TODO: return err value as well?
+	if (mnemonic_string.empty()) {
+		return boost::none;
 	}
-	crypto::secret_key sec_seed = *optl__sec_seed;
+	boost::algorithm::to_lower(mnemonic_string); // critial
+	// TODO/FIXME: any other normalization / sanitization on mnemonic_string ?
+	//
+	std::string mnemonic_language = mnemonic_language__ref; // FIXME: not sure why ElectrumWords::words_to_bytes can't take a ref
+	//
+	std::stringstream stream(mnemonic_string); // to count words…
+	unsigned long word_count = std::distance(
+		std::istream_iterator<std::string>(stream),
+		std::istream_iterator<std::string>()
+	);
+	crypto::secret_key sec_seed;
+	std::string sec_seed_string; // TODO/FIXME: needed this for shared ref outside of if branch below… not intending extra default constructor call but not sure how to get around it yet
+	if (word_count == crypto::ElectrumWords::stable_32B_seed_mnemonic_word_count) {
+		bool r = crypto::ElectrumWords::words_to_bytes(mnemonic_string, sec_seed, mnemonic_language);
+		if (!r) {
+			return boost::none; // TODO: return err value as well
+		}
+		sec_seed_string = string_tools::pod_to_hex(sec_seed);
+	} else if (word_count == crypto::ElectrumWords::legacy_16B_seed_mnemonic_word_count) {
+		crypto::legacy16B_secret_key legacy16B_sec_seed;
+		bool r = crypto::ElectrumWords::words_to_bytes(mnemonic_string, legacy16B_sec_seed, mnemonic_language); // special 16 byte function
+		if (!r) {
+			return boost::none; // TODO: return err value as well
+		}
+		monero_key_utils::coerce_valid_sec_key_from(legacy16B_sec_seed, sec_seed);
+		sec_seed_string = string_tools::pod_to_hex(legacy16B_sec_seed); // <- NOTE: we are returning the _LEGACY_ seed as the string… this is important so we don't lose the fact it was 16B/13-word originally!
+	} else {
+		return boost::none; // TODO: return 'Please enter a 25- or 13-word secret mnemonic'
+	}
 	cryptonote::account_base account{}; // this initializes the wallet and should call the default constructor
 	account.generate(sec_seed, true/*recover*/, false/*two_random*/);
 	std::string address_string = account.get_public_address_str(isTestnet);
 	const cryptonote::account_keys& keys = account.get_keys();
 	const WalletDescription walletDescription =
 	{
-		sec_seed,
+		sec_seed_string,
 		//
 		address_string,
 		//
@@ -148,7 +163,7 @@ bool monero_wallet_utils::validate_wallet_components_with(
 )
 { // TODO: how can the err_strings be prepared for localization?
 	outputs = {};
-	bool r;
+	bool r = false;
 	//
 	// Address
 	cryptonote::address_parse_info decoded_address_info;
@@ -165,14 +180,14 @@ bool monero_wallet_utils::validate_wallet_components_with(
 	}
 	//
 	// View key:
-	boost::optional<crypto::secret_key> sec_viewKey__orNil = monero_key_utils::valid_sec_key_from(inputs.sec_viewKey_string);
-	if (!sec_viewKey__orNil) {
+	crypto::secret_key sec_viewKey;
+	r = string_tools::hex_to_pod(inputs.sec_viewKey_string, sec_viewKey);
+	if (r == false) {
 		outputs.didError = true;
 		outputs.err_string = "Invalid view key";
 		//
 		return false;
 	}
-	crypto::secret_key sec_viewKey = *sec_viewKey__orNil; // so we can use it (FIXME: does this cause a copy?)
 	// Validate pub key derived from sec view key matches decoded_address-cached pub key
 	crypto::public_key expected_pub_viewKey;
 	r = crypto::secret_key_to_public_key(sec_viewKey, expected_pub_viewKey);
@@ -196,14 +211,13 @@ bool monero_wallet_utils::validate_wallet_components_with(
 	if (inputs.optl__sec_spendKey_string) {
 		// First check if spend key content actually exists before passing to valid_sec_key_from - so that a spend key decode error can be treated as a failure instead of detecting empty spend keys too
 		if ((*inputs.optl__sec_spendKey_string).empty() == false) {
-			boost::optional<crypto::secret_key> sec_spendKey_orNil = monero_key_utils::valid_sec_key_from(*inputs.optl__sec_spendKey_string);
-			if (!sec_spendKey_orNil) { // this is an actual parse error exit condition
+			r = string_tools::hex_to_pod(*inputs.optl__sec_spendKey_string, sec_spendKey);
+			if (r == false) { // this is an actual parse error exit condition
 				outputs.didError = true;
 				outputs.err_string = "Invalid spend key";
 				//
 				return false;
 			}
-			sec_spendKey = *sec_spendKey_orNil; // so we can use it below in possible seed validation (FIXME: does this cause a copy?)
 			// Validate pub key derived from sec spend key matches decoded_address_info-cached pub key
 			crypto::public_key expected_pub_spendKey;
 			r = crypto::secret_key_to_public_key(sec_spendKey, expected_pub_spendKey);
@@ -224,14 +238,27 @@ bool monero_wallet_utils::validate_wallet_components_with(
 	}
 	if (inputs.optl__sec_seed_string) {
 		if ((*inputs.optl__sec_seed_string).empty() == false) {
-			boost::optional<crypto::secret_key> sec_seed_orNil = monero_key_utils::valid_sec_key_from(*inputs.optl__sec_seed_string);
-			if (!sec_seed_orNil) { // this is an actual parse error exit condition bc we ensured it's not empty
-				outputs.didError = true;
-				outputs.err_string = "Invalid seed";
-				//
-				return false;
+			unsigned long sec_seed_string_length = (*inputs.optl__sec_seed_string).length();
+			crypto::secret_key sec_seed;
+			if (sec_seed_string_length == crypto::sec_seed_hex_string_length) { // normal seed
+				bool r = string_tools::hex_to_pod((*inputs.optl__sec_seed_string), sec_seed);
+				if (!r) {
+					outputs.didError = true;
+					outputs.err_string = "Invalid seed";
+					//
+					return false;
+				}
+			} else if (sec_seed_string_length == crypto::legacy16B__sec_seed_hex_string_length) {
+				crypto::legacy16B_secret_key legacy16B_sec_seed;
+				bool r = string_tools::hex_to_pod((*inputs.optl__sec_seed_string), legacy16B_sec_seed);
+				if (!r) {
+					outputs.didError = true;
+					outputs.err_string = "Invalid seed";
+					//
+					return false;
+				}
+				monero_key_utils::coerce_valid_sec_key_from(legacy16B_sec_seed, sec_seed);
 			}
-			crypto::secret_key sec_seed = *sec_seed_orNil; // so we can use it (FIXME: does this cause a copy?)
 			cryptonote::account_base expected_account{}; // this initializes the wallet and should call the default constructor
 			expected_account.generate(sec_seed, true/*recover*/, false/*two_random*/);
 			const cryptonote::account_keys& expected_account_keys = expected_account.get_keys();
