@@ -46,7 +46,4 @@ void monero_key_utils::coerce_valid_sec_key_from(
 	crypto::secret_key nonLegacy32B_sec_seed{};
 	keccak((uint8_t *)&legacy16B_mymonero_sec_seed, sizeof(crypto::legacy16B_secret_key),
 		   (uint8_t *)&dst__sec_seed, sizeof(crypto::secret_key));
-	//
-	// TODO/FIXME: final confirmaton that reduce to scalar not desired here …
-	//
 }
