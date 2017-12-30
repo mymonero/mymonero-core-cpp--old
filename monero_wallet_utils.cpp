@@ -119,13 +119,16 @@ boost::optional<WalletDescription> monero_wallet_utils::wallet_with(
 	);
 	crypto::secret_key sec_seed;
 	std::string sec_seed_string; // TODO/FIXME: needed this for shared ref outside of if branch below… not intending extra default constructor call but not sure how to get around it yet
+	bool from_legacy16B_lw_seed = false;
 	if (word_count == crypto::ElectrumWords::stable_32B_seed_mnemonic_word_count) {
+		from_legacy16B_lw_seed = false; // to be clear
 		bool r = crypto::ElectrumWords::words_to_bytes(mnemonic_string, sec_seed, mnemonic_language);
 		if (!r) {
 			return boost::none; // TODO: return err value as well
 		}
 		sec_seed_string = string_tools::pod_to_hex(sec_seed);
 	} else if (word_count == crypto::ElectrumWords::legacy_16B_seed_mnemonic_word_count) {
+		from_legacy16B_lw_seed = true;
 		crypto::legacy16B_secret_key legacy16B_sec_seed;
 		bool r = crypto::ElectrumWords::words_to_bytes(mnemonic_string, legacy16B_sec_seed, mnemonic_language); // special 16 byte function
 		if (!r) {
@@ -137,7 +140,12 @@ boost::optional<WalletDescription> monero_wallet_utils::wallet_with(
 		return boost::none; // TODO: return 'Please enter a 25- or 13-word secret mnemonic'
 	}
 	cryptonote::account_base account{}; // this initializes the wallet and should call the default constructor
-	account.generate(sec_seed, true/*recover*/, false/*two_random*/);
+	account.generate(
+		sec_seed,
+		true/*recover*/,
+		false/*two_random*/,
+		from_legacy16B_lw_seed
+	);
 	std::string address_string = account.get_public_address_str(isTestnet);
 	const cryptonote::account_keys& keys = account.get_keys();
 	const WalletDescription walletDescription =
