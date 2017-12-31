@@ -63,11 +63,14 @@ bool ElectrumWords::bytes_to_words(const legacy16B_secret_key& src, std::string&
 	return ElectrumWords::bytes_to_words(src.data, sizeof(src), words, language_name);
 }
 //
-boost::optional<monero_wallet_utils::WalletDescription> monero_wallet_utils::new_wallet(
+bool monero_wallet_utils::new_wallet(
     const std::string &mnemonic_language__ref,
+	WalletDescriptionRetVals &retVals,
 	bool isTestnet
 )
 {
+	retVals = {};
+	//
 	cryptonote::account_base account{}; // this initializes the wallet and should call the default constructor
 	crypto::secret_key nonLegacy32B_sec_seed = account.generate();
 	//
@@ -78,9 +81,13 @@ boost::optional<monero_wallet_utils::WalletDescription> monero_wallet_utils::new
 	bool r = crypto::ElectrumWords::bytes_to_words(nonLegacy32B_sec_seed, mnemonic_string, mnemonic_language__ref);
 	// ^-- it's OK to directly call ElectrumWords w/ crypto::secret_key as we are generating new wallet, not reading
 	if (!r) {
-		return boost::none; // TODO: return error string? e.g. 'unable to obtain mnemonic - check language'
+		retVals.did_error = true;
+		retVals.optl__err_string = "Unable to create new wallet";
+		// TODO: return code of unable to convert seed to mnemonic
+		//
+		return false;
 	}
-	const WalletDescription walletDescription =
+	retVals.optl__desc =
 	{
 		string_tools::pod_to_hex(nonLegacy32B_sec_seed),
 		//
@@ -93,19 +100,24 @@ boost::optional<monero_wallet_utils::WalletDescription> monero_wallet_utils::new
 		//
 		mnemonic_string
 	};
-	//
-	return walletDescription;	
+	return true;
 }
 //
-boost::optional<WalletDescription> monero_wallet_utils::wallet_with(
+bool monero_wallet_utils::wallet_with(
 	const std::string &mnemonic_string_ref,
 	const std::string &mnemonic_language__ref,
+	WalletDescriptionRetVals &retVals,
 	bool isTestnet
 ) {
+	retVals = {};
+	//
 	// sanitize inputs
 	std::string mnemonic_string = mnemonic_string_ref; // copy for to_lower… TODO: any better way?
 	if (mnemonic_string.empty()) {
-		return boost::none;
+		retVals.did_error = true;
+		retVals.optl__err_string = "Please enter a valid seed";
+		//
+		return false;
 	}
 	boost::algorithm::to_lower(mnemonic_string); // critial
 	// TODO/FIXME: any other normalization / sanitization on mnemonic_string ?
@@ -124,7 +136,10 @@ boost::optional<WalletDescription> monero_wallet_utils::wallet_with(
 		from_legacy16B_lw_seed = false; // to be clear
 		bool r = crypto::ElectrumWords::words_to_bytes(mnemonic_string, sec_seed, mnemonic_language);
 		if (!r) {
-			return boost::none; // TODO: return err value as well
+			retVals.did_error = true;
+			retVals.optl__err_string = "Invalid 25-word mnemonic";
+			//
+			return false;
 		}
 		sec_seed_string = string_tools::pod_to_hex(sec_seed);
 	} else if (word_count == crypto::ElectrumWords::legacy_16B_seed_mnemonic_word_count) {
@@ -132,12 +147,18 @@ boost::optional<WalletDescription> monero_wallet_utils::wallet_with(
 		crypto::legacy16B_secret_key legacy16B_sec_seed;
 		bool r = crypto::ElectrumWords::words_to_bytes(mnemonic_string, legacy16B_sec_seed, mnemonic_language); // special 16 byte function
 		if (!r) {
-			return boost::none; // TODO: return err value as well
+			retVals.did_error = true;
+			retVals.optl__err_string = "Invalid 13-word mnemonic";
+			//
+			return false;
 		}
 		monero_key_utils::coerce_valid_sec_key_from(legacy16B_sec_seed, sec_seed);
 		sec_seed_string = string_tools::pod_to_hex(legacy16B_sec_seed); // <- NOTE: we are returning the _LEGACY_ seed as the string… this is important so we don't lose the fact it was 16B/13-word originally!
 	} else {
-		return boost::none; // TODO: return 'Please enter a 25- or 13-word secret mnemonic'
+		retVals.did_error = true;
+		retVals.optl__err_string = "Please enter a 25- or 13-word secret mnemonic.";
+		//
+		return false;
 	}
 	cryptonote::account_base account{}; // this initializes the wallet and should call the default constructor
 	account.generate(
@@ -148,7 +169,7 @@ boost::optional<WalletDescription> monero_wallet_utils::wallet_with(
 	);
 	std::string address_string = account.get_public_address_str(isTestnet);
 	const cryptonote::account_keys& keys = account.get_keys();
-	const WalletDescription walletDescription =
+	retVals.optl__desc =
 	{
 		sec_seed_string,
 		//
@@ -161,8 +182,7 @@ boost::optional<WalletDescription> monero_wallet_utils::wallet_with(
 		//
 		mnemonic_string // copy for purposes of return…
 	};
-	//
-	return walletDescription;
+	return true;
 }
 
 bool monero_wallet_utils::validate_wallet_components_with(

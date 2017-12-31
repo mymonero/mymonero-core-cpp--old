@@ -80,13 +80,22 @@ namespace monero_wallet_utils
 		//
 		std::string mnemonic_string; // mnemonic_language is not returned because it must be provided to all functions which can return a WalletDescription
 	};
-	boost::optional<WalletDescription> new_wallet(
+	struct WalletDescriptionRetVals
+	{
+		bool did_error = false;
+		boost::optional<std::string> optl__err_string = boost::none;
+		//
+		boost::optional<WalletDescription> optl__desc = boost::none;
+	};
+	bool new_wallet(
 		const std::string &mnemonic_language,
+		WalletDescriptionRetVals &retVals,
 		bool isTestnet = false
 	);
-	boost::optional<WalletDescription> wallet_with(
+	bool wallet_with(
 		const std::string &mnemonic_string,
 		const std::string &mnemonic_language__ptr,
+		WalletDescriptionRetVals &retVals,
 		bool isTestnet = false
 	);
 	//
