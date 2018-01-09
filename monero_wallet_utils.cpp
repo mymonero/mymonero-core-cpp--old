@@ -3,7 +3,7 @@
 //  MyMonero
 //
 //  Created by Paul Shapiro on 11/23/17.
-//  Copyright (c) 2014-2017, MyMonero.com
+//  Copyright (c) 2014-2018, MyMonero.com
 //
 //  All rights reserved.
 //
@@ -268,7 +268,9 @@ bool monero_wallet_utils::validate_wallet_components_with(
 		if ((*inputs.optl__sec_seed_string).empty() == false) {
 			unsigned long sec_seed_string_length = (*inputs.optl__sec_seed_string).length();
 			crypto::secret_key sec_seed;
+			bool from_legacy16B_lw_seed = false;
 			if (sec_seed_string_length == crypto::sec_seed_hex_string_length) { // normal seed
+				from_legacy16B_lw_seed = false; // to be clear
 				bool r = string_tools::hex_to_pod((*inputs.optl__sec_seed_string), sec_seed);
 				if (!r) {
 					outputs.didError = true;
@@ -277,6 +279,7 @@ bool monero_wallet_utils::validate_wallet_components_with(
 					return false;
 				}
 			} else if (sec_seed_string_length == crypto::legacy16B__sec_seed_hex_string_length) {
+				from_legacy16B_lw_seed = true;
 				crypto::legacy16B_secret_key legacy16B_sec_seed;
 				bool r = string_tools::hex_to_pod((*inputs.optl__sec_seed_string), legacy16B_sec_seed);
 				if (!r) {
@@ -288,17 +291,30 @@ bool monero_wallet_utils::validate_wallet_components_with(
 				monero_key_utils::coerce_valid_sec_key_from(legacy16B_sec_seed, sec_seed);
 			}
 			cryptonote::account_base expected_account{}; // this initializes the wallet and should call the default constructor
-			expected_account.generate(sec_seed, true/*recover*/, false/*two_random*/);
+			expected_account.generate(sec_seed, true/*recover*/, false/*two_random*/, from_legacy16B_lw_seed);
 			const cryptonote::account_keys& expected_account_keys = expected_account.get_keys();
-			crypto::secret_key expected_account__sec_viewKey = expected_account_keys.m_view_secret_key;
-			crypto::secret_key expected_account__sec_spendKey = expected_account_keys.m_spend_secret_key;
 			// TODO: assert sec_spendKey initialized?
-			if (expected_account__sec_viewKey != sec_viewKey
-				|| expected_account__sec_spendKey != sec_spendKey
-				|| expected_account_keys.m_account_address.m_view_public_key != decoded_address_info.address.m_view_public_key
-				|| expected_account_keys.m_account_address.m_spend_public_key != decoded_address_info.address.m_spend_public_key) {
+			if (expected_account_keys.m_view_secret_key != sec_viewKey) {
 				outputs.didError = true;
-				outputs.err_string = "Seed does not match generated keys";
+				outputs.err_string = "Private view key does not match generated key";
+				//
+				return false;
+			}
+			if (expected_account_keys.m_spend_secret_key != sec_spendKey) {
+				outputs.didError = true;
+				outputs.err_string = "Private spend key does not match generated key";
+				//
+				return false;
+			}
+			if (expected_account_keys.m_account_address.m_view_public_key != decoded_address_info.address.m_view_public_key) {
+				outputs.didError = true;
+				outputs.err_string = "Public view key does not match generated key";
+				//
+				return false;
+			}
+			if (expected_account_keys.m_account_address.m_spend_public_key != decoded_address_info.address.m_spend_public_key) {
+				outputs.didError = true;
+				outputs.err_string = "Public spend key does not match generated key";
 				//
 				return false;
 			}

@@ -1,8 +1,8 @@
 //
-//  monero_paymentID_utils.hpp
+//  monero_key_image_utils.hpp
 //  MyMonero
 //
-//  Created by Paul Shapiro on 12/1/17.
+//  Created by Paul Shapiro on 1/2/18.
 //  Copyright (c) 2014-2018, MyMonero.com
 //
 //  All rights reserved.
@@ -32,24 +32,30 @@
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //
-
-#ifndef monero_paymentID_utils_hpp
-#define monero_paymentID_utils_hpp
-
-#include <stdio.h>
+#ifndef monero_key_image_utils_hpp
+#define monero_key_image_utils_hpp
+//
 #include "crypto.h"
-
-namespace monero_paymentID_utils
+#include "cryptonote_basic.h"
+#include "account.h"
+//
+namespace monero_key_image_utils
 {
-	//
-	// Generating Payment IDs
-	crypto::hash new_long_plain_paymentID(); // NOTE: This is deprecated – Try not to use it anymore
-	crypto::hash8 new_short_plain_paymentID(); // This is favored - its length will be detected and encrypted automatically on send
-	//
-	// Parsing and Detecting Payment IDs
-	bool parse_long_payment_id(const std::string& payment_id_str, crypto::hash& payment_id);
-	bool parse_short_payment_id(const std::string& payment_id_str, crypto::hash8& payment_id);
-	bool parse_payment_id(const std::string& payment_id_str, crypto::hash& payment_id);
+	struct KeyImageRetVals
+	{
+		bool did_error = false;
+		std::string err_string;
+		//
+		crypto::key_image calculated_key_image;
+	};
+	bool new__key_image(
+		const crypto::public_key& account_pub_spend_key,
+		const crypto::secret_key& account_sec_spend_key,
+		const crypto::secret_key& account_sec_view_key,
+		const crypto::public_key& tx_public_key,
+		uint64_t out_index,
+		KeyImageRetVals &KeyImageRetVals
+	);
 }
-
-#endif /* monero_paymentID_utils_hpp */
+//
+#endif /* monero_key_image_utils_hpp */
