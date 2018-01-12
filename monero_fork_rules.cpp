@@ -50,7 +50,7 @@ bool monero_fork_rules::use_fork_rules(uint8_t version, int64_t early_blocks, bo
 	return close_enough;
 }
 
-uint8_t get_bulletproof_fork(bool is_testnet)
+uint8_t monero_fork_rules::get_bulletproof_fork(bool is_testnet)
 {
 	if (is_testnet)
 		return 7;

@@ -39,8 +39,6 @@
 #include <boost/serialization/deque.hpp>
 #include <atomic>
 //
-#include "wallet2_transfer_utils.h"
-//
 namespace tools
 {
 

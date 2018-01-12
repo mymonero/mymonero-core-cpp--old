@@ -83,6 +83,7 @@ namespace monero_transfer_utils
 		//
 		bool is_testnet;
 		bool is_trusted_daemon;
+		bool is_lightwallet;
 	};
 	struct CreateTx_RetVals
 	{
@@ -111,56 +112,57 @@ namespace monero_transfer_utils
 		uint32_t subaddr_account,
 		std::set<uint32_t> subaddr_indices,
 		bool trusted_daemon,
-		bool is_testnet
+		bool is_testnet,
+		bool is_lightwallet
 	);
 	//
-	struct TransferSelected_ErrRetVals
-	{
-		bool didError;
-		std::string err_string;
-	};
-	bool _transfer_selected_rct(
-		const cryptonote::account_keys &account_keys,
-		const tools::wallet2::transfer_container &transfers,
-		std::vector<cryptonote::tx_destination_entry> dsts,
-		const std::list<size_t> selected_transfers,
-		const std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn,
-		size_t fake_outputs_count,
-		std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs,
-		uint64_t unlock_time,
-		uint64_t fee,
-		const std::vector<uint8_t>& extra,
-		cryptonote::transaction& tx,
-		tools::wallet2::pending_tx &ptx,
-		bool is_testnet,
-		TransferSelected_ErrRetVals &err_retVals
-	);
-	template<typename T>
-	bool _transfer_selected_nonrct(
-		const cryptonote::account_keys &account_keys,
-		const tools::wallet2::transfer_container &transfers,
-		const std::vector<cryptonote::tx_destination_entry>& dsts,
-		const std::list<size_t> selected_transfers,
-		const std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn,
-		size_t fake_outputs_count,
-		std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs,
-		uint64_t unlock_time,
-		uint64_t fee,
-		const std::vector<uint8_t>& extra,
-		T destination_split_strategy,
-		const tools::tx_dust_policy& dust_policy,
-		cryptonote::transaction& tx,
-		tools::wallet2::pending_tx &ptx,
-		bool is_testnet,
-		TransferSelected_ErrRetVals &err_retVals
-	);
+//	struct TransferSelected_ErrRetVals
+//	{
+//		bool didError;
+//		std::string err_string;
+//	};
+//	template<typename T>
+//	bool _transfer_selected_nonrct(
+//		const cryptonote::account_keys &account_keys,
+//		const tools::wallet2::transfer_container &transfers,
+//		const std::vector<cryptonote::tx_destination_entry>& dsts,
+//		const std::list<size_t> selected_transfers,
+//		const std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn,
+//		size_t fake_outputs_count,
+//		std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs,
+//		uint64_t unlock_time,
+//		uint64_t fee,
+//		const std::vector<uint8_t>& extra,
+//		T destination_split_strategy,
+//		const tools::tx_dust_policy& dust_policy,
+//		cryptonote::transaction& tx,
+//		tools::wallet2::pending_tx &ptx,
+//		bool is_testnet,
+//		TransferSelected_ErrRetVals &err_retVals
+//	);
+//	bool _transfer_selected_rct(
+//		const cryptonote::account_keys &account_keys,
+//		const tools::wallet2::transfer_container &transfers,
+//		std::vector<cryptonote::tx_destination_entry> dsts,
+//		const std::list<size_t> selected_transfers,
+//		const std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn,
+//		size_t fake_outputs_count,
+//		std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs,
+//		uint64_t unlock_time,
+//		uint64_t fee,
+//		const std::vector<uint8_t>& extra,
+//		cryptonote::transaction& tx,
+//		tools::wallet2::pending_tx &ptx,
+//		bool is_testnet,
+//		TransferSelected_ErrRetVals &err_retVals
+//	);
 	//
 	// NOTE/FIXME: Some of these fee methods have been temporarily internally modified and do not currently behave the same as wallet2.cpp's - compare and (constructively) normalize to integrate
 	uint64_t num_rct_outputs(); // TODO: migrate to standard function
 	uint64_t get_upper_transaction_size_limit();
 	uint64_t get_fee_multiplier(uint32_t priority, uint32_t default_priority, int fee_algorithm);
 	uint64_t get_dynamic_per_kb_fee_estimate();
-	uint64_t get_per_kb_fee();
+	uint64_t get_per_kb_fee(bool is_lightwallet = false);
 	int get_fee_algorithm();
 	//
 	size_t estimated_rct_tx_size(int n_inputs, int mixin, int n_outputs);
@@ -175,10 +177,22 @@ namespace monero_transfer_utils
 	uint32_t get_count_above(const tools::wallet2::transfer_container &transfers, const std::vector<size_t> &indices, uint64_t threshold);
 	float get_output_relatedness(const tools::wallet2::transfer_details &td0, const tools::wallet2::transfer_details &td1);
 	//
-	//
 	bool is_transfer_unlocked(const tools::wallet2::transfer_details& td, uint64_t blockchain_size, bool is_testnet = false);
+	bool is_transfer_unlocked(uint64_t unlock_time, uint64_t block_height, uint64_t blockchain_size, bool is_testnet = false);
 	bool is_tx_spendtime_unlocked(uint64_t unlock_time, uint64_t block_height, uint64_t blockchain_size, bool is_testnet = false);
 	uint64_t get_unlocked_balance(const tools::wallet2::transfer_container &transfers, uint64_t blockchain_size, bool is_testnet);
+	
+	std::map<uint32_t, uint64_t> balance_per_subaddress(
+		std::vector<wallet2::transfer_details> transfers,
+		std::unordered_map<crypto::hash, wallet2::unconfirmed_transfer_details> unconfirmed_txs,
+		uint32_t index_major
+	);
+	std::map<uint32_t, uint64_t> unlocked_balance_per_subaddress(
+		std::vector<wallet2::transfer_details> transfers,
+		uint32_t index_major,														 
+		uint64_t blockchain_size,
+		bool is_testnet
+	);
 	//
 	//
 	size_t fixed_ringsize(); // not mixinsize, which would be ringsize-1
