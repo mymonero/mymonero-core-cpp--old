@@ -63,8 +63,10 @@ namespace monero_transfer_utils
 		std::string sec_viewKey_string;
 		std::string sec_spendKey_string;
 		//
-		std::vector<cryptonote::tx_destination_entry> dsts;
-		std::vector<tools::wallet2::transfer_details> transfers;
+		std::string to_address_string;
+		std::string amount_float_string; // passed as string b/c function wants to parse amount
+		//
+		std::vector<tools::wallet2::transfer_details> transfers; 
 		std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn;
 		//
 		uint64_t blockchain_size;

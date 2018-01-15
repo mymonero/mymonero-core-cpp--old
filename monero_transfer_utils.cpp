@@ -27,13 +27,6 @@ bool monero_transfer_utils::create_signed_transaction(
 	const CreateTx_Args &args,
 	CreateTx_RetVals &retVals
 ) {
-	if (args.dsts.empty()) {
-		retVals.didError = true;
-		retVals.err_string = "No destination";
-		// TODO
-		// error::zero_destination
-		return false;
-	}
 	cryptonote::account_keys account_keys = {};
 	{
 		bool r = false;
@@ -51,22 +44,19 @@ bool monero_transfer_utils::create_signed_transaction(
 			// TODO: code?
 			return false;
 		}
-	}
-	{
 		cryptonote::account_public_address address = {};
 		{
 			crypto::public_key pub_viewKey;
-			bool r = crypto::secret_key_to_public_key(account_keys.m_view_secret_key, pub_viewKey);
+			r = crypto::secret_key_to_public_key(account_keys.m_view_secret_key, pub_viewKey);
 			if (!r) { // this would be a strange error indicating an application code fault
 				retVals.didError = true;
 				retVals.err_string = "Invalid view key";
 				return false;
 			}
 			address.m_view_public_key = pub_viewKey;
-		}
-		{
+			//
 			crypto::public_key pub_spendKey;
-			bool r = crypto::secret_key_to_public_key(account_keys.m_spend_secret_key, pub_spendKey);
+			r = crypto::secret_key_to_public_key(account_keys.m_spend_secret_key, pub_spendKey);
 			if (!r) { // this would be a strange error indicating an application code fault
 				retVals.didError = true;
 				retVals.err_string = "Invalid spend key";
@@ -82,18 +72,17 @@ bool monero_transfer_utils::create_signed_transaction(
 	std::vector<uint8_t> extra;
 	bool payment_id_seen = false;
 	{
+		bool r = false;
 		if (args.optl__payment_id_string) {
-			std::string payment_id_str = *args.optl__payment_id_string; // copy
-			//
 			crypto::hash payment_id;
-			bool r = monero_paymentID_utils::parse_long_payment_id(payment_id_str, payment_id);
+			r = monero_paymentID_utils::parse_long_payment_id((*args.optl__payment_id_string), payment_id);
 			if (r) {
 				std::string extra_nonce;
 				cryptonote::set_payment_id_to_tx_extra_nonce(extra_nonce, payment_id);
 				r = cryptonote::add_extra_nonce_to_tx_extra(extra, extra_nonce);
 			} else {
 				crypto::hash8 payment_id8;
-				r = monero_paymentID_utils::parse_short_payment_id(payment_id_str, payment_id8);
+				r = monero_paymentID_utils::parse_short_payment_id((*args.optl__payment_id_string), payment_id8);
 				if (r) {
 					std::string extra_nonce;
 					cryptonote::set_encrypted_payment_id_to_tx_extra_nonce(extra_nonce, payment_id8);
@@ -108,6 +97,44 @@ bool monero_transfer_utils::create_signed_transaction(
 			payment_id_seen = true;
 		}
 	}
+	std::vector<cryptonote::tx_destination_entry> dsts;
+	cryptonote::tx_destination_entry de;
+	{
+		bool r = false;
+		cryptonote::address_parse_info info;
+		r = cryptonote::get_account_address_from_str(info, args.is_testnet, args.to_address_string);
+		if (!r) {
+			retVals.didError = true;
+			retVals.err_string = "couldn't parse address.";
+			return false;
+		}
+		de.addr = info.address;
+		de.is_subaddress = info.is_subaddress;
+		//
+		if (info.has_payment_id) {
+			if (payment_id_seen) {
+				retVals.didError = true;
+				retVals.err_string = "a single transaction cannot use more than one payment id";
+				return false;
+			}
+			std::string extra_nonce;
+			set_encrypted_payment_id_to_tx_extra_nonce(extra_nonce, info.payment_id);
+			bool r = add_extra_nonce_to_tx_extra(extra, extra_nonce);
+			if (!r) {
+				retVals.didError = true;
+				retVals.err_string = "failed to set up payment id, though it was decoded correctly";
+				return false;
+			}
+			payment_id_seen = true;
+		}
+		//
+		r = cryptonote::parse_amount(de.amount, args.amount_float_string);
+		THROW_WALLET_EXCEPTION_IF(
+			!r || 0 == de.amount, error::wallet_internal_error,
+			"amount is wrong... expected number from 0 to " + print_money(std::numeric_limits<uint64_t>::max())
+		);
+	}
+	dsts.push_back(de);
 	//
 	uint64_t unlock_block = args.unlock_time;
 	// TODO: support locked txs
@@ -122,7 +149,7 @@ bool monero_transfer_utils::create_signed_transaction(
 	std::vector<tools::wallet2::pending_tx> ptx_vector;
 	ptx_vector = monero_transfer_utils::create_transactions_2(
 		args.transfers,
-		args.dsts,
+		dsts,
 		monero_transfer_utils::fixed_mixinsize(),
 		unlock_block,
 		args.blockchain_size,
