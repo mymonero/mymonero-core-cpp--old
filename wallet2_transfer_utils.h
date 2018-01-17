@@ -39,6 +39,10 @@
 #include <boost/serialization/deque.hpp>
 #include <atomic>
 //
+#include "cryptonote_basic_impl.h"
+#include "cryptonote_format_utils.h"
+#include "cryptonote_tx_utils.h"
+//
 namespace tools
 {
 

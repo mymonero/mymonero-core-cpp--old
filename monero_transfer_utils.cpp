@@ -253,7 +253,7 @@ std::vector<wallet2::pending_tx> monero_transfer_utils::create_transactions_2(
 	
 	std::map<uint32_t, uint64_t> unlocked_balance_per_subaddr = unlocked_balance_per_subaddress(transfers, subaddr_account, blockchain_size, is_testnet);
 //	std::map<uint32_t, uint64_t> balance_per_subaddr = balance_per_subaddress(transfers, unconfirmed_txs, subaddr_account);
-//
+////
 //	if (subaddr_indices.empty()) // "index=<N1>[,<N2>,...]" wasn't specified -> use all the indices with non-zero unlocked balance
 //	{
 //		for (const auto& i : balance_per_subaddr)
@@ -616,7 +616,7 @@ std::vector<wallet2::pending_tx> monero_transfer_utils::create_transactions_2(
 //
 //	LOG_PRINT_L1("Done creating " << txes.size() << " transactions, " << print_money(accumulated_fee) <<
 //				 " total fee, " << print_money(accumulated_change) << " total change");
-//
+
 	std::vector<wallet2::pending_tx> ptx_vector;
 //	for (std::vector<TX>::iterator i = txes.begin(); i != txes.end(); ++i)
 //	{
@@ -630,8 +630,8 @@ std::vector<wallet2::pending_tx> monero_transfer_utils::create_transactions_2(
 //					 print_money(tx.ptx.fee) << " fee, " << print_money(tx.ptx.change_dts.amount) << " change");
 //		ptx_vector.push_back(tx.ptx);
 //	}
-//
-//	// if we made it this far, we're OK to actually send the transactions
+
+	// if we made it this far, we're OK to actually send the transactions
 	return ptx_vector;
 }
 //
@@ -1112,4 +1112,16 @@ std::map<uint32_t, uint64_t> monero_transfer_utils::unlocked_balance_per_subaddr
 	}
 	return amount_per_subaddr;
 }
-
+//
+void monero_transfer_utils::set_spent(transfer_details &td, uint64_t height)
+{
+	LOG_PRINT_L2("Setting SPENT at " << height << ": ki " << td.m_key_image << ", amount " << print_money(td.m_amount));
+	td.m_spent = true;
+	td.m_spent_height = height;
+}
+void monero_transfer_utils::set_unspent(transfer_details &td)
+{
+	LOG_PRINT_L2("Setting UNSPENT: ki " << td.m_key_image << ", amount " << print_money(td.m_amount));
+	td.m_spent = false;
+	td.m_spent_height = 0;
+}
