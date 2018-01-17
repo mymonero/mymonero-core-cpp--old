@@ -630,7 +630,7 @@ std::vector<wallet2::pending_tx> monero_transfer_utils::create_transactions_2(
 //					 print_money(tx.ptx.fee) << " fee, " << print_money(tx.ptx.change_dts.amount) << " change");
 //		ptx_vector.push_back(tx.ptx);
 //	}
-
+//
 	// if we made it this far, we're OK to actually send the transactions
 	return ptx_vector;
 }
@@ -1113,15 +1113,25 @@ std::map<uint32_t, uint64_t> monero_transfer_utils::unlocked_balance_per_subaddr
 	return amount_per_subaddr;
 }
 //
-void monero_transfer_utils::set_spent(transfer_details &td, uint64_t height)
+void monero_transfer_utils::set_spent(wallet2::transfer_details &td, uint64_t height)
 {
 	LOG_PRINT_L2("Setting SPENT at " << height << ": ki " << td.m_key_image << ", amount " << print_money(td.m_amount));
 	td.m_spent = true;
 	td.m_spent_height = height;
 }
-void monero_transfer_utils::set_unspent(transfer_details &td)
+void monero_transfer_utils::set_unspent(wallet2::transfer_details &td)
 {
 	LOG_PRINT_L2("Setting UNSPENT: ki " << td.m_key_image << ", amount " << print_money(td.m_amount));
 	td.m_spent = false;
 	td.m_spent_height = 0;
+}
+void monero_transfer_utils::set_spent(std::vector<wallet2::transfer_details> &transfers, size_t idx, uint64_t height)
+{
+	wallet2::transfer_details &td = transfers[idx];
+	monero_transfer_utils::set_spent(td, height);
+}
+void monero_transfer_utils::set_unspent(std::vector<wallet2::transfer_details> &transfers, size_t idx)
+{
+	wallet2::transfer_details &td = transfers[idx];
+	monero_transfer_utils::set_unspent(td);
 }

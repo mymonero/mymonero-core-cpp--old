@@ -202,8 +202,10 @@ namespace monero_transfer_utils
 	//
 	std::string new_dummy_address_string_for_rct_tx(bool isTestnet = false);
 	//
-	void monero_transfer_utils::set_spent(transfer_details &td, uint64_t height);
-	void monero_transfer_utils::set_unspent(transfer_details &td);
+	void set_spent(wallet2::transfer_details &td, uint64_t height);
+	void set_unspent(wallet2::transfer_details &td);
+	void set_spent(std::vector<wallet2::transfer_details> &transfers, size_t idx, uint64_t height);
+	void set_unspent(std::vector<wallet2::transfer_details> &transfers, size_t idx);
 }
 	
 #endif /* monero_transfer_utils_hpp */
