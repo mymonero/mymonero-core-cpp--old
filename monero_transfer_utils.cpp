@@ -27,6 +27,8 @@ bool monero_transfer_utils::create_signed_transaction(
 	const CreateTx_Args &args,
 	CreateTx_RetVals &retVals
 ) {
+	retVals = {};
+	//
 	cryptonote::account_keys account_keys = {};
 	{
 		bool r = false;

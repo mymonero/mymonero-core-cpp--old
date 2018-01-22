@@ -103,11 +103,10 @@ bool monero_wallet_utils::new_wallet(
 	return true;
 }
 //
-bool monero_wallet_utils::wallet_with(
+bool monero_wallet_utils::decoded_seed(
 	const std::string &mnemonic_string_ref,
 	const std::string &mnemonic_language__ref,
-	WalletDescriptionRetVals &retVals,
-	bool isTestnet
+	MnemonicDecodedSeed_RetVals &retVals
 ) {
 	retVals = {};
 	//
@@ -160,27 +159,49 @@ bool monero_wallet_utils::wallet_with(
 		//
 		return false;
 	}
+	retVals.optl__sec_seed = sec_seed;
+	retVals.optl__sec_seed_string = sec_seed_string;
+	retVals.optl__mnemonic_string = mnemonic_string; 
+	retVals.from_legacy16B_lw_seed = from_legacy16B_lw_seed;
+	//
+	return true;
+}
+//
+bool monero_wallet_utils::wallet_with(
+	const std::string &mnemonic_string_ref,
+	const std::string &mnemonic_language__ref,
+	WalletDescriptionRetVals &retVals,
+	bool isTestnet
+) {
+	retVals = {};
+	//
+	MnemonicDecodedSeed_RetVals decodedSeed_retVals;
+	bool r = decoded_seed(mnemonic_string_ref, mnemonic_language__ref, decodedSeed_retVals);
+	if (!r) {
+		retVals.did_error = true;
+		retVals.optl__err_string = *decodedSeed_retVals.optl__err_string; // TODO: assert?
+		return false;
+	}
 	cryptonote::account_base account{}; // this initializes the wallet and should call the default constructor
 	account.generate(
-		sec_seed,
+		*decodedSeed_retVals.optl__sec_seed, // is this an extra copy? maybe have consumer pass ref as arg instead
 		true/*recover*/,
 		false/*two_random*/,
-		from_legacy16B_lw_seed
+		decodedSeed_retVals.from_legacy16B_lw_seed // assumed set if r
 	);
-	std::string address_string = account.get_public_address_str(isTestnet);
 	const cryptonote::account_keys& keys = account.get_keys();
 	retVals.optl__desc =
 	{
-		sec_seed_string,
+		*decodedSeed_retVals.optl__sec_seed_string, // assumed non nil if r
 		//
-		address_string,
+		account.get_public_address_str(isTestnet),
 		//
 		keys.m_spend_secret_key,
 		keys.m_view_secret_key,
 		keys.m_account_address.m_spend_public_key,
 		keys.m_account_address.m_view_public_key,
 		//
-		mnemonic_string // copy for purposes of return…
+		*decodedSeed_retVals.optl__mnemonic_string, // assumed non nil if r; copied for return
 	};
 	return true;
 }

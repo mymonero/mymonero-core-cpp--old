@@ -89,8 +89,6 @@ namespace monero_transfer_utils
 	};
 	struct CreateTx_RetVals
 	{
-		CreateTx_RetVals() = delete; // disallow `CreateTx_RetVals foo;` default constructor
-		//
 		bool didError;
 		std::string err_string; // this is not defined when didError!=true
 		//
@@ -98,7 +96,7 @@ namespace monero_transfer_utils
 	};
 	bool create_signed_transaction( // returns !didError
 		const CreateTx_Args &args,
-		CreateTx_RetVals &retVals // initializes retVals for you
+		CreateTx_RetVals &retVals // initializes a retVals for you
 	);
 	//
 	// Shared / Utility / Common - Functions

@@ -66,7 +66,25 @@ namespace crypto
 namespace monero_wallet_utils
 {
 	//
-	// Wallets - Types
+	// Accounts
+	struct MnemonicDecodedSeed_RetVals
+	{
+		bool did_error = false;
+		boost::optional<std::string> optl__err_string = boost::none;
+		//
+		boost::optional<crypto::secret_key> optl__sec_seed = boost::none;
+		boost::optional<std::string> optl__sec_seed_string = boost::none;
+		boost::optional<std::string> optl__mnemonic_string = boost::none;
+		bool from_legacy16B_lw_seed = false;
+	};
+	bool decoded_seed(
+		const std::string &mnemonic_string,
+		const std::string &mnemonic_language_string,
+		//
+		MnemonicDecodedSeed_RetVals &retVals
+	);
+	//
+	// Convenience functions - Wallets
 	struct WalletDescription
 	{
 		std::string sec_seed_string; // as string bc it might by legacy 16B style aside from crypto::secret_key
