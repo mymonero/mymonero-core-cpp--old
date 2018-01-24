@@ -1047,11 +1047,11 @@ bool monero_transfer_utils::is_tx_spendtime_unlocked(
 	return false;
 }
 
-size_t monero_transfer_utils::fixed_ringsize()
+uint32_t monero_transfer_utils::fixed_ringsize()
 {
 	return 10; // TODO/FIXME: temporary…… for lightwallet code!
 }
-size_t monero_transfer_utils::fixed_mixinsize()
+uint32_t monero_transfer_utils::fixed_mixinsize()
 {
 	return monero_transfer_utils::fixed_ringsize() - 1;
 }

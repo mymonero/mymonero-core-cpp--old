@@ -195,8 +195,8 @@ namespace monero_transfer_utils
 	);
 	//
 	//
-	size_t fixed_ringsize(); // not mixinsize, which would be ringsize-1
-	size_t fixed_mixinsize(); // not ringsize, which would be mixinsize+1
+	uint32_t fixed_ringsize(); // not mixinsize, which would be ringsize-1
+	uint32_t fixed_mixinsize(); // not ringsize, which would be mixinsize+1
 	//
 	std::string new_dummy_address_string_for_rct_tx(bool isTestnet = false);
 	//

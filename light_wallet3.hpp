@@ -42,6 +42,16 @@ namespace tools
 	class light_wallet3 : public wallet3_base
 	{
 	public:
+		struct address_tx: tools::wallet2::payment_details // TODO: port wallet2 types to updated domain
+		{
+			bool m_coinbase;
+			bool m_mempool;
+			bool m_incoming;
+			uint32_t m_mixin;
+			std::string m_payment_id_string; // may be .empty()
+		};
+		//
+		//
 		light_wallet3(bool testnet = false, bool restricted = false);
 		//
 		// Imperatives - Response reception
@@ -64,6 +74,7 @@ namespace tools
 		uint64_t total_received() { return m_light_wallet_total_received; }
 		uint64_t locked_balance() { return m_light_wallet_locked_balance; } // aka "locked_funds"
 		uint64_t total_sent() { return m_light_wallet_total_sent; }
+		const std::unordered_map<crypto::hash, light_wallet3::address_tx> address_txs() { return m_light_wallet_address_txs; }
 		//
 	protected:
 		bool m_light_wallet_connected;
@@ -80,12 +91,13 @@ namespace tools
 		uint64_t m_light_wallet_total_received;
 		uint64_t m_light_wallet_total_sent;
 		//
-		// Light wallet info needed to populate m_payment requires 2 separate api calls (get_address_txs and get_unspent_outs)
+		// Lightweight wallet info needed to populate m_payment requires 2 separate api calls (get_address_txs and get_unspent_outs)
 		// We save the info from the first call in m_light_wallet_address_txs for easier lookup.
-		std::unordered_map<crypto::hash, tools::wallet2::address_tx> m_light_wallet_address_txs;
+		std::unordered_map<crypto::hash, light_wallet3::address_tx> m_light_wallet_address_txs;
 		// store calculated key image for faster lookup
 		std::unordered_map<crypto::public_key, std::map<uint64_t, crypto::key_image> > m_key_image_cache;
 		//
+		// Functions - Accessors
 		bool is_own_key_image(const crypto::key_image& key_image, const crypto::public_key& tx_public_key, uint64_t out_index);
 		bool parse_rct_str(const std::string& rct_string, const crypto::public_key& tx_pub_key, uint64_t internal_output_index, rct::key& decrypted_mask, rct::key& rct_commit, bool decrypt) const;
 		//

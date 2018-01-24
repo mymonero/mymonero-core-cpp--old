@@ -92,10 +92,30 @@ void light_wallet3::ingest__get_address_info(
 	m_light_wallet_transaction_height = res.transaction_height;
 	m_local_bc_height = res.blockchain_height;
 	//
-	// For updating balance
-	m_light_wallet_total_sent = res.total_sent;
-	m_light_wallet_total_received = res.total_received;
+	// deprecated due to no usage
+//	m_light_wallet_spent_outputs = res.spent_outputs; // copy ; TODO: is this ok or should we iterate and append?
+	//
 	m_light_wallet_locked_balance = res.locked_funds;
+	m_light_wallet_total_received = res.total_received;
+	// total_sent is set just below after derivation
+	//
+	uint64_t mutable__total_sent = res.total_sent; // to be finalized
+	{ // Check key images - subtract fake outputs from mutable__total_sent
+		for (const auto &so: res.spent_outputs) {
+			crypto::public_key tx_public_key;
+			crypto::key_image key_image;
+			THROW_WALLET_EXCEPTION_IF(!string_tools::validate_hex(64, so.tx_pub_key), error::wallet_internal_error, "Invalid tx_pub_key field");
+			THROW_WALLET_EXCEPTION_IF(!string_tools::validate_hex(64, so.key_image), error::wallet_internal_error, "Invalid key_image field");
+			string_tools::hex_to_pod(so.tx_pub_key, tx_public_key);
+			string_tools::hex_to_pod(so.key_image, key_image);
+			
+			if (!is_own_key_image(key_image, tx_public_key, so.out_index)) {
+				THROW_WALLET_EXCEPTION_IF(so.amount > mutable__total_sent, error::wallet_internal_error, "Lightwallet: total sent is negative!");
+				mutable__total_sent -= so.amount;
+			}
+		}
+	}
+	m_light_wallet_total_sent = mutable__total_sent; // final
 	//
 	m_light_wallet_connected = true;
 	//
@@ -117,7 +137,7 @@ void light_wallet3::ingest__get_address_txs(
 	m_local_bc_height = ires.blockchain_height;
 	//
 	if(ires.transactions.empty())
-		return;
+		return; // FIXME: is it a good idea to return so early?
 	
 	// Create searchable vectors
 	std::vector<crypto::hash> payments_txs;
@@ -134,43 +154,43 @@ void light_wallet3::ingest__get_address_txs(
 	std::vector<crypto::hash> pool_txs;
 	
 	// TODO: update all this parsing
-	
-	
+	//
 	for (const auto &t: ires.transactions) {
 		const uint64_t total_received = t.total_received;
 		uint64_t total_sent = t.total_sent;
-		
+		//
 		// Check key images - subtract fake outputs from total_sent
-		for(const auto &so: t.spent_outputs)
-		{
+		for(const auto &so: t.spent_outputs) {
 			crypto::public_key tx_public_key;
 			crypto::key_image key_image;
 			THROW_WALLET_EXCEPTION_IF(!string_tools::validate_hex(64, so.tx_pub_key), error::wallet_internal_error, "Invalid tx_pub_key field");
 			THROW_WALLET_EXCEPTION_IF(!string_tools::validate_hex(64, so.key_image), error::wallet_internal_error, "Invalid key_image field");
 			string_tools::hex_to_pod(so.tx_pub_key, tx_public_key);
 			string_tools::hex_to_pod(so.key_image, key_image);
-			
+			//
 			if(!is_own_key_image(key_image, tx_public_key, so.out_index)) {
 				THROW_WALLET_EXCEPTION_IF(so.amount > t.total_sent, error::wallet_internal_error, "Lightwallet: total sent is negative!");
 				total_sent -= so.amount;
 			}
 		}
-		
+		//
 		// Do not add tx if empty.
-		if(total_sent == 0 && total_received == 0)
+		if(total_sent == 0 && total_received == 0) {
 			continue;
-		
-		crypto::hash payment_id = null_hash;
+		}
 		crypto::hash tx_hash;
-		
-		THROW_WALLET_EXCEPTION_IF(!string_tools::validate_hex(64, t.payment_id), error::wallet_internal_error, "Invalid payment_id field");
 		THROW_WALLET_EXCEPTION_IF(!string_tools::validate_hex(64, t.hash), error::wallet_internal_error, "Invalid hash field");
-		string_tools::hex_to_pod(t.payment_id, payment_id);
 		string_tools::hex_to_pod(t.hash, tx_hash);
-		
+		//
+		crypto::hash payment_id = null_hash;
+		if (!t.payment_id.empty()) {
+			THROW_WALLET_EXCEPTION_IF(!string_tools::validate_hex(64, t.payment_id), error::wallet_internal_error, "Invalid payment_id field");
+			string_tools::hex_to_pod(t.payment_id, payment_id);
+		}
+		//
 		// lightwallet specific info
 		bool incoming = (total_received > total_sent);
-		wallet2::address_tx address_tx;
+		light_wallet3::address_tx address_tx;
 		address_tx.m_tx_hash = tx_hash;
 		address_tx.m_incoming = incoming;
 		address_tx.m_amount  =  incoming ? total_received - total_sent : total_sent - total_received;
@@ -179,6 +199,9 @@ void light_wallet3::ingest__get_address_txs(
 		address_tx.m_timestamp = t.timestamp;
 		address_tx.m_coinbase  = t.coinbase;
 		address_tx.m_mempool  = t.mempool;
+		address_tx.m_mixin = t.mixin;
+		address_tx.m_payment_id_string = t.payment_id;
+		
 		m_light_wallet_address_txs.emplace(tx_hash,address_tx);
 		
 		// populate data needed for history (m_payments, m_unconfirmed_payments, m_confirmed_txs)
@@ -190,7 +213,7 @@ void light_wallet3::ingest__get_address_txs(
 			payment.m_block_height = t.height;
 			payment.m_unlock_time  = t.unlock_time;
 			payment.m_timestamp = t.timestamp;
-			
+			//
 			if (t.mempool) {
 				if (std::find(unconfirmed_payments_txs.begin(), unconfirmed_payments_txs.end(), tx_hash) == unconfirmed_payments_txs.end()) {
 					pool_txs.push_back(tx_hash);
@@ -211,18 +234,15 @@ void light_wallet3::ingest__get_address_txs(
 					}
 				}
 			}
-			// Outgoing transfers
-		} else {
+		} else { // Outgoing transfers
 			uint64_t amount_sent = total_sent - total_received;
 			cryptonote::transaction dummy_tx; // not used by light wallet
 			// increase wallet total sent
 			wallet_total_sent += total_sent;
-			if (t.mempool)
-			{
+			if (t.mempool) {
 				// Handled by add_unconfirmed_tx in commit_tx
 				// If sent from another wallet instance we need to add it
-				if(m_unconfirmed_txs.find(tx_hash) == m_unconfirmed_txs.end())
-				{
+				if (m_unconfirmed_txs.find(tx_hash) == m_unconfirmed_txs.end()) {
 					wallet2::unconfirmed_transfer_details utd;
 					utd.m_amount_in = amount_sent;
 					utd.m_amount_out = amount_sent;
@@ -232,20 +252,14 @@ void light_wallet3::ingest__get_address_txs(
 					utd.m_state = wallet2::unconfirmed_transfer_details::pending;
 					m_unconfirmed_txs.emplace(tx_hash,utd);
 				}
-			}
-			else
-			{
+			} else {
 				// Only add if new
 				auto confirmed_tx = m_confirmed_txs.find(tx_hash);
-				if(confirmed_tx == m_confirmed_txs.end()) {
+				if (confirmed_tx == m_confirmed_txs.end()) {
 					// tx is added to m_unconfirmed_txs - move to confirmed
-					if(m_unconfirmed_txs.find(tx_hash) != m_unconfirmed_txs.end())
-					{
+					if (m_unconfirmed_txs.find(tx_hash) != m_unconfirmed_txs.end()) {
 						process_unconfirmed(tx_hash, dummy_tx, t.height);
-					}
-					// Tx sent by another wallet instance
-					else
-					{
+					} else { // Tx sent by another wallet instance
 						wallet2::confirmed_transfer_details ctd;
 						ctd.m_amount_in = amount_sent;
 						ctd.m_amount_out = amount_sent;
@@ -255,17 +269,13 @@ void light_wallet3::ingest__get_address_txs(
 						ctd.m_timestamp = t.timestamp;
 						m_confirmed_txs.emplace(tx_hash,ctd);
 					}
-					if (0 != m_callback)
-					{
+					if (0 != m_callback) {
 						m_callback->on_lw_money_spent(t.height, tx_hash, amount_sent);
 					}
-				}
-				// If not new - check the amount and update if necessary.
-				// when sending a tx to same wallet the receiving amount has to be credited
-				else
-				{
-					if(confirmed_tx->second.m_amount_in != amount_sent || confirmed_tx->second.m_amount_out != amount_sent)
-					{
+				} else {
+					// If not new - check the amount and update if necessary.
+					// when sending a tx to same wallet the receiving amount has to be credited
+					if(confirmed_tx->second.m_amount_in != amount_sent || confirmed_tx->second.m_amount_out != amount_sent) {
 						MDEBUG("Adjusting amount sent/received for tx: <" + t.hash + ">. Is tx sent to own wallet? " << print_money(amount_sent) << " != " << print_money(confirmed_tx->second.m_amount_in));
 						confirmed_tx->second.m_amount_in = amount_sent;
 						confirmed_tx->second.m_amount_out = amount_sent;
@@ -368,27 +378,22 @@ void light_wallet3::ingest__get_unspent_outs(const cryptonote::COMMAND_RPC_GET_U
 		td.m_tx.vout[td.m_internal_output_index] = txout;
 		
 		// Add unlock time and coinbase bool got from get_address_txs api call
-		std::unordered_map<crypto::hash,wallet2::address_tx>::const_iterator found = m_light_wallet_address_txs.find(txid);
+		std::unordered_map<crypto::hash,light_wallet3::address_tx>::const_iterator found = m_light_wallet_address_txs.find(txid);
 		THROW_WALLET_EXCEPTION_IF(found == m_light_wallet_address_txs.end(), error::wallet_internal_error, "Lightwallet: tx not found in m_light_wallet_address_txs");
 		bool miner_tx = found->second.m_coinbase;
 		td.m_tx.unlock_time = found->second.m_unlock_time;
 		
-		if (!o.rct.empty())
-		{
+		if (!o.rct.empty()) {
 			// Coinbase tx's
-			if(miner_tx)
-			{
+			if (miner_tx) {
 				td.m_mask = rct::identity();
-			}
-			else
-			{
+			} else {
 				// rct txs
 				// decrypt rct mask, calculate commit hash and compare against blockchain commit hash
 				rct::key rct_commit;
 				parse_rct_str(o.rct, tx_pub_key, td.m_internal_output_index, td.m_mask, rct_commit, true);
 				bool valid_commit = (rct_commit == rct::commit(td.amount(), td.m_mask));
-				if(!valid_commit)
-				{
+				if (!valid_commit) {
 					MDEBUG("output index: " << o.global_index);
 					MDEBUG("mask: " + string_tools::pod_to_hex(td.m_mask));
 					MDEBUG("calculated commit: " + string_tools::pod_to_hex(rct::commit(td.amount(), td.m_mask)));
@@ -398,14 +403,13 @@ void light_wallet3::ingest__get_unspent_outs(const cryptonote::COMMAND_RPC_GET_U
 				THROW_WALLET_EXCEPTION_IF(!valid_commit, error::wallet_internal_error, "Lightwallet: rct commit hash mismatch!");
 			}
 			td.m_rct = true;
-		}
-		else
-		{
+		} else {
 			td.m_mask = rct::identity();
 			td.m_rct = false;
 		}
-		if(!spent)
+		if (!spent) {
 			monero_transfer_utils::set_unspent(m_transfers, m_transfers.size()-1);
+		}
 		m_key_images[td.m_key_image] = m_transfers.size()-1;
 		m_pub_keys[td.get_public_key()] = m_transfers.size()-1;
 	}
@@ -417,14 +421,8 @@ void light_wallet3::ingest__get_random_outs(const cryptonote::COMMAND_RPC_GET_RA
 		//		THROW_WALLET_EXCEPTION_IF(ores.amount_outs.empty() , error::wallet_internal_error, "No outputs recieved from light wallet node. Error: " + ores.Error);
 		return; // no outputs
 	}
-	// TODO
+	// TODO: implement
 }
-
-//bool wallet2::ingest__get_address_info(cryptonote::COMMAND_RPC_GET_ADDRESS_INFO::response &response)
-//{
-// NOT (YET) IMPLEMENTED
-//	return true;
-//}
 
 bool light_wallet3::is_own_key_image(const crypto::key_image& key_image, const crypto::public_key& tx_public_key, uint64_t out_index)
 {
