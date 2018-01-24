@@ -35,6 +35,7 @@
 
 #include "wallet3_base.hpp"
 #include "wallet2_transfer_utils.h" // for types
+#include "light_wallet3_server_api.h"
 
 namespace tools
 {
@@ -55,11 +56,11 @@ namespace tools
 		light_wallet3(bool testnet = false, bool restricted = false);
 		//
 		// Imperatives - Response reception
-		void ingest__get_address_info(bool didError, const cryptonote::COMMAND_RPC_GET_ADDRESS_INFO::response &res); // sets connected
+		void ingest__get_address_info(bool didError, const light_wallet3_server_api::COMMAND_RPC_GET_ADDRESS_INFO::response &res); // sets connected
 		// the following 'ingest__' methods assume successful responses
-		void ingest__get_address_txs(const cryptonote::COMMAND_RPC_GET_ADDRESS_TXS::response &ires);
-		void ingest__get_unspent_outs(const cryptonote::COMMAND_RPC_GET_UNSPENT_OUTS::response &ores, size_t light_wallet_requested_outputs_count);
-		void ingest__get_random_outs(const cryptonote::COMMAND_RPC_GET_RANDOM_OUTS::response &ores);
+		void ingest__get_address_txs(const light_wallet3_server_api::COMMAND_RPC_GET_ADDRESS_TXS::response &ires);
+		void ingest__get_unspent_outs(const light_wallet3_server_api::COMMAND_RPC_GET_UNSPENT_OUTS::response &ores, size_t light_wallet_requested_outputs_count);
+		void ingest__get_random_outs(const light_wallet3_server_api::COMMAND_RPC_GET_RANDOM_OUTS::response &ores);
 		//
 		// Accessors - Overrides
 		uint64_t balance(uint32_t index_major) const; 

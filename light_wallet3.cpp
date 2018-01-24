@@ -74,7 +74,7 @@ light_wallet3::light_wallet3(bool testnet, bool restricted)
 //
 void light_wallet3::ingest__get_address_info(
 	bool didError,
-	const cryptonote::COMMAND_RPC_GET_ADDRESS_INFO::response &res
+	const light_wallet3_server_api::COMMAND_RPC_GET_ADDRESS_INFO::response &res
 ) {
 	if (didError) {
 		m_light_wallet_connected = false;
@@ -128,7 +128,7 @@ void light_wallet3::ingest__get_address_info(
 }
 
 void light_wallet3::ingest__get_address_txs(
-	const cryptonote::COMMAND_RPC_GET_ADDRESS_TXS::response &ires
+	const light_wallet3_server_api::COMMAND_RPC_GET_ADDRESS_TXS::response &ires
 ) {
 	// Update lw heights/properties
 	m_light_wallet_scanned_height = ires.scanned_height;
@@ -188,6 +188,9 @@ void light_wallet3::ingest__get_address_txs(
 			string_tools::hex_to_pod(t.payment_id, payment_id);
 		}
 		//
+		// must parse ISO 8601 formatted date to seconds-since-epoch
+		time_t tx_timestamp_s_since_1970 = light_wallet3_server_api::epoch_time_by_parsing_date_string(t.timestamp);
+		//
 		// lightwallet specific info
 		bool incoming = (total_received > total_sent);
 		light_wallet3::address_tx address_tx;
@@ -196,7 +199,7 @@ void light_wallet3::ingest__get_address_txs(
 		address_tx.m_amount  =  incoming ? total_received - total_sent : total_sent - total_received;
 		address_tx.m_block_height = t.height;
 		address_tx.m_unlock_time  = t.unlock_time;
-		address_tx.m_timestamp = t.timestamp;
+		address_tx.m_timestamp = tx_timestamp_s_since_1970; // this is actually a formatted string
 		address_tx.m_coinbase  = t.coinbase;
 		address_tx.m_mempool  = t.mempool;
 		address_tx.m_mixin = t.mixin;
@@ -212,7 +215,7 @@ void light_wallet3::ingest__get_address_txs(
 			payment.m_amount       = total_received - total_sent;
 			payment.m_block_height = t.height;
 			payment.m_unlock_time  = t.unlock_time;
-			payment.m_timestamp = t.timestamp;
+			payment.m_timestamp = tx_timestamp_s_since_1970;
 			//
 			if (t.mempool) {
 				if (std::find(unconfirmed_payments_txs.begin(), unconfirmed_payments_txs.end(), tx_hash) == unconfirmed_payments_txs.end()) {
@@ -248,7 +251,7 @@ void light_wallet3::ingest__get_address_txs(
 					utd.m_amount_out = amount_sent;
 					utd.m_change = 0;
 					utd.m_payment_id = payment_id;
-					utd.m_timestamp = t.timestamp;
+					utd.m_timestamp = tx_timestamp_s_since_1970;
 					utd.m_state = wallet2::unconfirmed_transfer_details::pending;
 					m_unconfirmed_txs.emplace(tx_hash,utd);
 				}
@@ -266,7 +269,7 @@ void light_wallet3::ingest__get_address_txs(
 						ctd.m_change = 0;
 						ctd.m_payment_id = payment_id;
 						ctd.m_block_height = t.height;
-						ctd.m_timestamp = t.timestamp;
+						ctd.m_timestamp = tx_timestamp_s_since_1970;
 						m_confirmed_txs.emplace(tx_hash,ctd);
 					}
 					if (0 != m_callback) {
@@ -289,8 +292,10 @@ void light_wallet3::ingest__get_address_txs(
 	remove_obsolete_pool_txs(pool_txs);
 }
 
-void light_wallet3::ingest__get_unspent_outs(const cryptonote::COMMAND_RPC_GET_UNSPENT_OUTS::response &ores, size_t light_wallet_requested_outputs_count)
-{
+void light_wallet3::ingest__get_unspent_outs(
+	const light_wallet3_server_api::COMMAND_RPC_GET_UNSPENT_OUTS::response &ores,
+	size_t light_wallet_requested_outputs_count
+) {
 	MDEBUG("Getting unspent outs");
 
 	m_light_wallet_per_kb_fee = ores.per_kb_fee;
@@ -415,7 +420,7 @@ void light_wallet3::ingest__get_unspent_outs(const cryptonote::COMMAND_RPC_GET_U
 	}
 }
 
-void light_wallet3::ingest__get_random_outs(const cryptonote::COMMAND_RPC_GET_RANDOM_OUTS::response &ores)
+void light_wallet3::ingest__get_random_outs(const light_wallet3_server_api::COMMAND_RPC_GET_RANDOM_OUTS::response &ores)
 {
 	if (ores.amount_outs.empty()) {
 		//		THROW_WALLET_EXCEPTION_IF(ores.amount_outs.empty() , error::wallet_internal_error, "No outputs recieved from light wallet node. Error: " + ores.Error);
