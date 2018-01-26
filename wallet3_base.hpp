@@ -133,11 +133,14 @@ namespace tools
 		//
 		void remove_obsolete_pool_txs(const std::vector<crypto::hash> &tx_hashes);
 		void process_unconfirmed(const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t height);
-
+		//
+		// Transferring
+		bool base__create_signed_transaction(); // have your concrete subclass call this with special parameters
+		//
 	protected: // formerly private; changed to enable subclassing
 		
 		bool clear();
-
+		//
 		cryptonote::account_base m_account;
 	//		boost::optional<epee::net_utils::http::login> m_daemon_login;
 	//		std::string m_daemon_address;

@@ -511,3 +511,27 @@ uint64_t light_wallet3::blockchain_height() const
 {
 	return m_light_wallet_blockchain_height; // NOTE: overridden from m_local_bc_height … although we DO set m_local_bc_height to the same value at all relevan times so it'd be fine to remove this override … but m_local_bc_height may be deprecated 
 }
+
+//
+//
+// Transferring
+//
+bool light_wallet3::create_signed_transaction()
+{
+	
+	std::function<bool(
+		std::vector<std::vector<tools::wallet2::get_outs_entry>> &,
+		const std::list<size_t> &,
+		size_t
+	)> get_random_outs_fn = [
+	
+	] (
+	   std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs,
+	   const std::list<size_t> &selected_transfers,
+	   size_t fake_outputs_count
+	) -> bool {
+		return false; // TODO: need/want this flag?
+	};
+	//
+	return base__create_signed_transaction();
+}

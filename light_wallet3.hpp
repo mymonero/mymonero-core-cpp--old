@@ -77,6 +77,9 @@ namespace tools
 		uint64_t total_sent() { return m_light_wallet_total_sent; }
 		const std::unordered_map<crypto::hash, light_wallet3::address_tx> address_txs() { return m_light_wallet_address_txs; }
 		//
+		// Transferring
+		bool create_signed_transaction();
+		//
 	protected:
 		bool m_light_wallet_connected;
 		//

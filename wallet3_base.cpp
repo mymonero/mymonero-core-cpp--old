@@ -262,4 +262,49 @@ namespace tools
 			m_unconfirmed_txs.erase(unconf_it);
 		}
 	}
+	
+	//
+	// Transferring
+	bool wallet3_base::base__create_signed_transaction()
+	{
+		// TODO
+		//	monero_transfer_utils::CreateTx_Args args =
+		//	{
+		//		sec_viewKey_string,
+		//		sec_spendKey_string,
+		//		//
+		//		to_address_string,
+		//		amount_float_string,
+		//		//
+		//		transfers,
+		//		get_random_outs_fn,
+		//		//
+		//		blockchain_size,
+		//		0, // unlock_time
+		//		priority,
+		//		1, // default_priority
+		//		//
+		//		0, // min_output_count
+		//		0, // min_output_value
+		//		false, // merge_destinations - apparent default from wallet2
+		//		//
+		//		paymentID_string__ptr,
+		//		//
+		//		0, // current_subaddress_account TODO??
+		//		subaddr_indices,
+		//		//
+		//		false, // is_testnet
+		//		true, // is_trusted_daemon
+		//		true // is_lightwallet
+		//	};
+		//	monero_transfer_utils::CreateTx_RetVals retVals = {};
+		//	BOOL didSucceed = monero_transfer_utils::create_signed_transaction(args, retVals);
+		//	if (retVals.didError) {
+		//		NSString *errStr = [NSString stringWithUTF8String:retVals.err_string.c_str()];
+		//		_doFn_withErrStr(errStr);
+		//		return;
+		//	}
+		//	NSAssert(didSucceed, @"Found unexpectedly didSucceed=false without an error");
+		return true;
+	}
 }
