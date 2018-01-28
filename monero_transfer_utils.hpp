@@ -60,11 +60,14 @@ namespace monero_transfer_utils
 	{
 		CreateTx_Args() = delete; // disallow `CreateTx_Args foo;` default constructor
 		//
-		std::string sec_viewKey_string;
-		std::string sec_spendKey_string;
+		const cryptonote::account_keys &account_keys;
 		//
 		std::string to_address_string;
 		std::string amount_float_string; // passed as string b/c function wants to parse amount
+		const std::string *optl__payment_id_string;
+		//
+		uint32_t current_subaddr_account;
+		std::set<uint32_t> subaddr_indices;
 		//
 		std::vector<tools::wallet2::transfer_details> transfers; 
 		std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn;
@@ -77,11 +80,6 @@ namespace monero_transfer_utils
 		uint32_t min_output_count;
 		uint64_t min_output_value;
 		bool merge_destinations;
-		//
-		const std::string *optl__payment_id_string;
-		//
-		uint32_t current_subaddr_account;
-		std::set<uint32_t> subaddr_indices;
 		//
 		bool is_testnet;
 		bool is_trusted_daemon;
@@ -100,7 +98,7 @@ namespace monero_transfer_utils
 	);
 	//
 	// Shared / Utility / Common - Functions
-	std::vector<tools::wallet2::pending_tx> create_transactions_2(
+	std::vector<tools::wallet2::pending_tx> create_transactions_3(
 		std::vector<wallet2::transfer_details> transfers,
 		std::vector<cryptonote::tx_destination_entry> dsts,
 		const size_t fake_outs_count,
@@ -180,7 +178,7 @@ namespace monero_transfer_utils
 	bool is_transfer_unlocked(const tools::wallet2::transfer_details& td, uint64_t blockchain_size, bool is_testnet = false);
 	bool is_transfer_unlocked(uint64_t unlock_time, uint64_t block_height, uint64_t blockchain_size, bool is_testnet = false);
 	bool is_tx_spendtime_unlocked(uint64_t unlock_time, uint64_t block_height, uint64_t blockchain_size, bool is_testnet = false);
-	uint64_t get_unlocked_balance(const tools::wallet2::transfer_container &transfers, uint64_t blockchain_size, bool is_testnet);
+	uint64_t unlocked_balance(const tools::wallet2::transfer_container &transfers, uint64_t blockchain_size, bool is_testnet);
 	
 	std::map<uint32_t, uint64_t> balance_per_subaddress(
 		std::vector<wallet2::transfer_details> transfers,

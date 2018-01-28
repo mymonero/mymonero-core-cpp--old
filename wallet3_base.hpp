@@ -87,19 +87,25 @@ namespace tools
 	class wallet3_base
 	{
 	public:
-		wallet3_base(bool testnet = false, bool restricted = false);
+		//
+		// Static
+		static const char* tr(const char* str);
+		//
+		// Instance
+		wallet3_base(bool testnet = false, bool restricted = false); // designated initializer
 		
 		bool deinit();
+		
+		// Then call one of the generate functions
 
 		/*!
 		 * \brief Generates a wallet or restores one.
 		 * \param  recovery_param If it is a restore, the recovery key
 		 * \param  recover        Whether it is a restore
 		 * \param  two_random     Whether it is a non-deterministic wallet
+		 * \param from_legacy16B_lw_seed Whether it's a 13 word / 16 byte legacy lightweight wallet seed
 		 * \return                The secret key of the generated wallet
 		 */
-		bool generate_with_seed_account(const cryptonote::account_base &account);
-		
 		crypto::secret_key generate(const crypto::secret_key& recovery_param = crypto::secret_key(), bool recover = false, bool two_random = false, bool from_legacy16B_lw_seed = false);
 		/*!
 		 * \brief Creates a wallet from a public address and a spend/view secret key pair.
@@ -124,6 +130,22 @@ namespace tools
 		//
 		uint64_t blockchain_height() const;
 		//
+		// Subaddress scheme
+		cryptonote::account_public_address get_subaddress(const cryptonote::subaddress_index& index) const;
+		cryptonote::account_public_address get_address() const { return get_subaddress({0,0}); }
+		crypto::public_key get_subaddress_spend_public_key(const cryptonote::subaddress_index& index) const;
+		std::string get_subaddress_as_str(const cryptonote::subaddress_index& index) const;
+		std::string get_address_as_str() const { return get_subaddress_as_str({0, 0}); }
+		std::string get_integrated_address_as_str(const crypto::hash8& payment_id) const;
+		void add_subaddress_account(const std::string& label);
+		size_t get_num_subaddress_accounts() const { return m_subaddress_labels.size(); }
+		size_t get_num_subaddresses(uint32_t index_major) const { return index_major < m_subaddress_labels.size() ? m_subaddress_labels[index_major].size() : 0; }
+		void add_subaddress(uint32_t index_major, const std::string& label); // throws when index is out of bound
+		void expand_subaddresses(const cryptonote::subaddress_index& index);
+		std::string get_subaddress_label(const cryptonote::subaddress_index& index) const;
+		void set_subaddress_label(const cryptonote::subaddress_index &index, const std::string &label);
+		void set_subaddress_lookahead(size_t major, size_t minor);
+		//
 		// locked & unlocked balance of given or current subaddress account
 		uint64_t balance(uint32_t subaddr_index_major) const;
 		uint64_t unlocked_balance(uint32_t subaddr_index_major) const;
@@ -135,7 +157,20 @@ namespace tools
 		void process_unconfirmed(const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t height);
 		//
 		// Transferring
-		bool base__create_signed_transaction(); // have your concrete subclass call this with special parameters
+		bool base__create_signed_transaction(const std::string &to_address_string,
+											 const std::string &amount_float_string,
+											 const std::string *optl__payment_id_string_ptr,
+											 uint32_t simple_priority,
+											 std::set<uint32_t> subaddr_indices,
+											 uint32_t current_subaddress_account_idx
+											 ); // have your concrete subclass call this with special parameters
+		// Transferring - Required - Override and implement to use base__create_signed_transaction
+		std::function<bool(
+			std::vector<std::vector<tools::wallet2::get_outs_entry>> &,
+			const std::list<size_t> &,
+			size_t
+		)> _new__get_random_outs_fn();
+		//
 		//
 	protected: // formerly private; changed to enable subclassing
 		

@@ -29,46 +29,6 @@ bool monero_transfer_utils::create_signed_transaction(
 ) {
 	retVals = {};
 	//
-	cryptonote::account_keys account_keys = {};
-	{
-		bool r = false;
-		r = string_tools::hex_to_pod(args.sec_viewKey_string, account_keys.m_view_secret_key);
-		if (!r) {
-			retVals.didError = true;
-			retVals.err_string = "Invalid secret view key";
-			// TODO: code?
-			return false;
-		}
-		r = string_tools::hex_to_pod(args.sec_spendKey_string, account_keys.m_spend_secret_key);
-		if (!r) {
-			retVals.didError = true;
-			retVals.err_string = "Invalid secret spend key";
-			// TODO: code?
-			return false;
-		}
-		cryptonote::account_public_address address = {};
-		{
-			crypto::public_key pub_viewKey;
-			r = crypto::secret_key_to_public_key(account_keys.m_view_secret_key, pub_viewKey);
-			if (!r) { // this would be a strange error indicating an application code fault
-				retVals.didError = true;
-				retVals.err_string = "Invalid view key";
-				return false;
-			}
-			address.m_view_public_key = pub_viewKey;
-			//
-			crypto::public_key pub_spendKey;
-			r = crypto::secret_key_to_public_key(account_keys.m_spend_secret_key, pub_spendKey);
-			if (!r) { // this would be a strange error indicating an application code fault
-				retVals.didError = true;
-				retVals.err_string = "Invalid spend key";
-				return false;
-			}
-			address.m_spend_public_key = pub_spendKey;
-		}
-		account_keys.m_account_address = address;
-	}
-	//
 	// Detect hash8 or hash32 char hex string as pid and configure 'extra' accordingly
 	// TODO: factor this into monero_paymentID_utils
 	std::vector<uint8_t> extra;
@@ -149,7 +109,7 @@ bool monero_transfer_utils::create_signed_transaction(
 //		unlock_block = bc_height + locked_blocks;
 //	}
 	std::vector<tools::wallet2::pending_tx> ptx_vector;
-	ptx_vector = monero_transfer_utils::create_transactions_2(
+	ptx_vector = monero_transfer_utils::create_transactions_3(
 		args.transfers,
 		dsts,
 		monero_transfer_utils::fixed_mixinsize(),
@@ -174,7 +134,7 @@ bool monero_transfer_utils::create_signed_transaction(
 	//
 	return true;
 }
-std::vector<wallet2::pending_tx> monero_transfer_utils::create_transactions_2(
+std::vector<wallet2::pending_tx> monero_transfer_utils::create_transactions_3(
 	std::vector<wallet2::transfer_details> transfers,
 	std::vector<cryptonote::tx_destination_entry> dsts,
 	const size_t fake_outs_count,

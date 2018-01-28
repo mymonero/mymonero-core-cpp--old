@@ -78,7 +78,11 @@ namespace tools
 		const std::unordered_map<crypto::hash, light_wallet3::address_tx> address_txs() { return m_light_wallet_address_txs; }
 		//
 		// Transferring
-		bool create_signed_transaction();
+		bool create_signed_transaction(const std::string &to_address_string,
+									   const std::string &amount_float_string,
+									   const std::string *optl__payment_id_string,
+									   uint32_t simple_priority
+									   );
 		//
 	protected:
 		bool m_light_wallet_connected;

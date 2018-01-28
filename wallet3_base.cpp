@@ -32,6 +32,8 @@
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "wallet3_base.hpp"
+#include "common/i18n.h"
+//
 #include "monero_transfer_utils.hpp"
 
 #define SUBADDRESS_LOOKAHEAD_MAJOR 50
@@ -125,7 +127,9 @@ namespace tools
 	//	cryptonote::block b;
 	//	generate_genesis(b);
 	//	m_blockchain.push_back(get_block_hash(b));
-//		add_subaddress_account(tr("Primary account"));
+		//
+		// NOTE: commented to avoid performance hit for now
+//		add_subaddress_account(tools::wallet3_base::tr("Primary account"));
 		
 		return retval;
 	}
@@ -163,59 +167,151 @@ namespace tools
 			amount += i.second;
 		return amount;
 	}
-	//----------------------------------------------------------------------------------------------------
 	std::map<uint32_t, uint64_t> wallet3_base::balance_per_subaddress(uint32_t index_major) const
 	{
-		std::map<uint32_t, uint64_t> amount_per_subaddr;
-		for (const auto& td: m_transfers)
-		{
-			if (td.m_subaddr_index.major == index_major && !td.m_spent)
-			{
-				auto found = amount_per_subaddr.find(td.m_subaddr_index.minor);
-				if (found == amount_per_subaddr.end())
-					amount_per_subaddr[td.m_subaddr_index.minor] = td.amount();
-				else
-					found->second += td.amount();
-			}
-		}
-		for (const auto& utx: m_unconfirmed_txs)
-		{
-			if (utx.second.m_subaddr_account == index_major && utx.second.m_state != wallet2::unconfirmed_transfer_details::failed)
-			{
-				// all changes go to 0-th subaddress (in the current subaddress account)
-				auto found = amount_per_subaddr.find(0);
-				if (found == amount_per_subaddr.end())
-					amount_per_subaddr[0] = utx.second.m_change;
-				else
-					found->second += utx.second.m_change;
-			}
-		}
-		return amount_per_subaddr;
+		return monero_transfer_utils::balance_per_subaddress(m_transfers, m_unconfirmed_txs, index_major);
 	}
-	//----------------------------------------------------------------------------------------------------
 	std::map<uint32_t, uint64_t> wallet3_base::unlocked_balance_per_subaddress(uint32_t index_major) const
 	{
-		std::map<uint32_t, uint64_t> amount_per_subaddr;
-		for(const wallet2::transfer_details& td: m_transfers)
-		{
-			if(td.m_subaddr_index.major == index_major && !td.m_spent && monero_transfer_utils::is_transfer_unlocked(td, blockchain_height()))
-			{
-				auto found = amount_per_subaddr.find(td.m_subaddr_index.minor);
-				if (found == amount_per_subaddr.end())
-					amount_per_subaddr[td.m_subaddr_index.minor] = td.amount();
-				else
-					found->second += td.amount();
-			}
-		}
-		return amount_per_subaddr;
+		return monero_transfer_utils::unlocked_balance_per_subaddress(m_transfers, index_major, blockchain_height(), m_testnet);
+	}
+	//
+
+	//----------------------------------------------------------------------------------------------------
+	cryptonote::account_public_address wallet3_base::get_subaddress(const cryptonote::subaddress_index& index) const
+	{
+		const cryptonote::account_keys& keys = m_account.get_keys();
+		if (index.is_zero())
+			return keys.m_account_address;
+		
+		crypto::public_key D = get_subaddress_spend_public_key(index);
+		
+		// C = a*D
+		crypto::public_key C = rct::rct2pk(rct::scalarmultKey(rct::pk2rct(D), rct::sk2rct(keys.m_view_secret_key)));   // could have defined secret_key_mult_public_key() under src/crypto
+		
+		// result: (C, D)
+		cryptonote::account_public_address address;
+		address.m_view_public_key  = C;
+		address.m_spend_public_key = D;
+		return address;
+	}
+	//----------------------------------------------------------------------------------------------------
+	crypto::public_key wallet3_base::get_subaddress_spend_public_key(const cryptonote::subaddress_index& index) const
+	{
+		const cryptonote::account_keys& keys = m_account.get_keys();
+		if (index.is_zero())
+			return keys.m_account_address.m_spend_public_key;
+		
+		// m = Hs(a || index_major || index_minor)
+		crypto::secret_key m = cryptonote::get_subaddress_secret_key(keys.m_view_secret_key, index);
+		
+		// M = m*G
+		crypto::public_key M;
+		crypto::secret_key_to_public_key(m, M);
+		
+		// D = B + M
+		rct::key D_rct;
+		rct::addKeys(D_rct, rct::pk2rct(keys.m_account_address.m_spend_public_key), rct::pk2rct(M));  // could have defined add_public_key() under src/crypto
+		crypto::public_key D = rct::rct2pk(D_rct);
+		
+		return D;
+	}
+	//----------------------------------------------------------------------------------------------------
+	std::string wallet3_base::get_subaddress_as_str(const cryptonote::subaddress_index& index) const
+	{
+		cryptonote::account_public_address address = get_subaddress(index);
+		return cryptonote::get_account_address_as_str(m_testnet, !index.is_zero(), address);
+	}
+	//----------------------------------------------------------------------------------------------------
+	std::string wallet3_base::get_integrated_address_as_str(const crypto::hash8& payment_id) const
+	{
+		return cryptonote::get_account_integrated_address_as_str(m_testnet, get_address(), payment_id);
 	}
 	//
 	uint64_t wallet3_base::blockchain_height() const
 	{
 		return m_local_bc_height;
 	}
+	const char* wallet3_base::tr(const char* str) { return i18n_translate(str, "tools::wallet2"); } // keeping old string for compatibility
 	//
-	// Imperatives
+	// Imperatives - Subaddresses
+	void wallet3_base::add_subaddress_account(const std::string& label)
+	{
+		uint32_t index_major = (uint32_t)get_num_subaddress_accounts();
+		expand_subaddresses({index_major, 0});
+		m_subaddress_labels[index_major][0] = label;
+	}
+	//----------------------------------------------------------------------------------------------------
+	void wallet3_base::add_subaddress(uint32_t index_major, const std::string& label)
+	{
+		THROW_WALLET_EXCEPTION_IF(index_major >= m_subaddress_labels.size(), error::account_index_outofbound);
+		uint32_t index_minor = (uint32_t)get_num_subaddresses(index_major);
+		expand_subaddresses({index_major, index_minor});
+		m_subaddress_labels[index_major][index_minor] = label;
+	}
+	//----------------------------------------------------------------------------------------------------
+	void wallet3_base::expand_subaddresses(const cryptonote::subaddress_index& index)
+	{
+		if (m_subaddress_labels.size() <= index.major)
+		{
+			// add new accounts
+			cryptonote::subaddress_index index2;
+			for (index2.major = m_subaddress_labels.size(); index2.major < index.major + m_subaddress_lookahead_major; ++index2.major)
+			{
+				for (index2.minor = 0; index2.minor < (index2.major == index.major ? index.minor : 0) + m_subaddress_lookahead_minor; ++index2.minor)
+				{
+					if (m_subaddresses_inv.count(index2) == 0)
+					{
+						crypto::public_key D = get_subaddress_spend_public_key(index2);
+						m_subaddresses[D] = index2;
+						m_subaddresses_inv[index2] = D;
+					}
+				}
+			}
+			m_subaddress_labels.resize(index.major + 1, {"Untitled account"});
+			m_subaddress_labels[index.major].resize(index.minor + 1);
+		}
+		else if (m_subaddress_labels[index.major].size() <= index.minor)
+		{
+			// add new subaddresses
+			cryptonote::subaddress_index index2 = index;
+			for (index2.minor = m_subaddress_labels[index.major].size(); index2.minor < index.minor + m_subaddress_lookahead_minor; ++index2.minor)
+			{
+				if (m_subaddresses_inv.count(index2) == 0)
+				{
+					crypto::public_key D = get_subaddress_spend_public_key(index2);
+					m_subaddresses[D] = index2;
+					m_subaddresses_inv[index2] = D;
+				}
+			}
+			m_subaddress_labels[index.major].resize(index.minor + 1);
+		}
+	}
+	//----------------------------------------------------------------------------------------------------
+	std::string wallet3_base::get_subaddress_label(const cryptonote::subaddress_index& index) const
+	{
+		if (index.major >= m_subaddress_labels.size() || index.minor >= m_subaddress_labels[index.major].size())
+		{
+			MERROR("Subaddress label doesn't exist");
+			return "";
+		}
+		return m_subaddress_labels[index.major][index.minor];
+	}
+	//----------------------------------------------------------------------------------------------------
+	void wallet3_base::set_subaddress_label(const cryptonote::subaddress_index& index, const std::string &label)
+	{
+		THROW_WALLET_EXCEPTION_IF(index.major >= m_subaddress_labels.size(), error::account_index_outofbound);
+		THROW_WALLET_EXCEPTION_IF(index.minor >= m_subaddress_labels[index.major].size(), error::address_index_outofbound);
+		m_subaddress_labels[index.major][index.minor] = label;
+	}
+	//----------------------------------------------------------------------------------------------------
+	void wallet3_base::set_subaddress_lookahead(size_t major, size_t minor)
+	{
+		m_subaddress_lookahead_major = major;
+		m_subaddress_lookahead_minor = minor;
+	}
+	//
+	// Imperatives - Transactions
 	void wallet3_base::remove_obsolete_pool_txs(const std::vector<crypto::hash> &tx_hashes)
 	{
 		// remove pool txes to us that aren't in the pool anymore
@@ -242,7 +338,6 @@ namespace tools
 			}
 		}
 	}
-
 	void wallet3_base::process_unconfirmed(const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t height)
 	{
 		if (m_unconfirmed_txs.empty())
@@ -262,49 +357,66 @@ namespace tools
 			m_unconfirmed_txs.erase(unconf_it);
 		}
 	}
-	
 	//
 	// Transferring
-	bool wallet3_base::base__create_signed_transaction()
+	bool wallet3_base::base__create_signed_transaction(const std::string &to_address_string,
+													   const std::string &amount_float_string,
+													   const std::string *optl__payment_id_string_ptr,
+													   uint32_t simple_priority,
+													   std::set<uint32_t> subaddr_indices,
+													   uint32_t current_subaddress_account_idx
+													   )
 	{
-		// TODO
-		//	monero_transfer_utils::CreateTx_Args args =
-		//	{
-		//		sec_viewKey_string,
-		//		sec_spendKey_string,
-		//		//
-		//		to_address_string,
-		//		amount_float_string,
-		//		//
-		//		transfers,
-		//		get_random_outs_fn,
-		//		//
-		//		blockchain_size,
-		//		0, // unlock_time
-		//		priority,
-		//		1, // default_priority
-		//		//
-		//		0, // min_output_count
-		//		0, // min_output_value
-		//		false, // merge_destinations - apparent default from wallet2
-		//		//
-		//		paymentID_string__ptr,
-		//		//
-		//		0, // current_subaddress_account TODO??
-		//		subaddr_indices,
-		//		//
-		//		false, // is_testnet
-		//		true, // is_trusted_daemon
-		//		true // is_lightwallet
-		//	};
-		//	monero_transfer_utils::CreateTx_RetVals retVals = {};
-		//	BOOL didSucceed = monero_transfer_utils::create_signed_transaction(args, retVals);
-		//	if (retVals.didError) {
-		//		NSString *errStr = [NSString stringWithUTF8String:retVals.err_string.c_str()];
-		//		_doFn_withErrStr(errStr);
-		//		return;
-		//	}
-		//	NSAssert(didSucceed, @"Found unexpectedly didSucceed=false without an error");
+		monero_transfer_utils::CreateTx_Args args =
+		{
+			m_account.get_keys(),
+			//
+			to_address_string,
+			amount_float_string,
+			optl__payment_id_string_ptr,
+			//
+			current_subaddress_account_idx,
+			subaddr_indices,
+			//
+			m_transfers,
+			_new__get_random_outs_fn(),
+			//
+			blockchain_height(),
+			0, // unlock_time
+			simple_priority,
+			1, // default_priority
+			//
+			0, // min_output_count
+			0, // min_output_value
+			false, // merge_destinations - apparent default from wallet2
+			//
+			false, // is_testnet
+			true, // is_trusted_daemon
+			true // is_lightwallet
+		};
+		monero_transfer_utils::CreateTx_RetVals retVals = {};
+		bool did_succeed = monero_transfer_utils::create_signed_transaction(args, retVals);
+		if (retVals.didError) {
+			// TODO: return retVals.err_string -- but the err_string probably has to be returned as a callback because get_random_outs_fn is not synchronous
+			return false;
+		}
+		THROW_WALLET_EXCEPTION_IF(!did_succeed, error::wallet_internal_error, "Unexpected !did_succeed=false without an error");
 		return true;
+	}
+	std::function<bool(
+		std::vector<std::vector<tools::wallet2::get_outs_entry>> &,
+		const std::list<size_t> &,
+		size_t
+	)> wallet3_base::_new__get_random_outs_fn() {
+		return [
+		] (
+			std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs,
+			const std::list<size_t> &selected_transfers,
+			size_t fake_outputs_count
+		) -> bool {
+			THROW_WALLET_EXCEPTION_IF(true, error::wallet_internal_error, "You must override and implement _new__get_random_outs_fn");
+
+			return false; // TODO: need/want this flag?
+		};
 	}
 }
