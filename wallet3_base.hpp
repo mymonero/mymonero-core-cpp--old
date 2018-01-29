@@ -94,8 +94,11 @@ namespace tools
 		// Instance
 		wallet3_base(bool testnet = false, bool restricted = false); // designated initializer
 		
-		bool deinit();
 		
+		bool deinit();
+		bool init(uint64_t upper_transaction_size_limit = 0);
+		
+
 		// Then call one of the generate functions
 
 		/*!
@@ -153,6 +156,9 @@ namespace tools
 		std::map<uint32_t, uint64_t> balance_per_subaddress(uint32_t subaddr_index_major) const;
 		std::map<uint32_t, uint64_t> unlocked_balance_per_subaddress(uint32_t subaddr_index_major) const;
 		//
+		virtual uint64_t get_per_kb_fee() const; // may be overridden
+		virtual uint64_t get_dynamic_per_kb_fee_estimate() const =0; // must be overridden
+		//
 		void remove_obsolete_pool_txs(const std::vector<crypto::hash> &tx_hashes);
 		void process_unconfirmed(const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t height);
 		//
@@ -162,15 +168,9 @@ namespace tools
 											 const std::string *optl__payment_id_string_ptr,
 											 uint32_t simple_priority,
 											 std::set<uint32_t> subaddr_indices,
-											 uint32_t current_subaddress_account_idx
+											 uint32_t current_subaddress_account_idx,
+											 std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn
 											 ); // have your concrete subclass call this with special parameters
-		// Transferring - Required - Override and implement to use base__create_signed_transaction
-		std::function<bool(
-			std::vector<std::vector<tools::wallet2::get_outs_entry>> &,
-			const std::list<size_t> &,
-			size_t
-		)> _new__get_random_outs_fn();
-		//
 		//
 	protected: // formerly private; changed to enable subclassing
 		
@@ -203,7 +203,7 @@ namespace tools
 	//		std::unordered_map<std::string, std::string> m_attributes;
 		/* to remove std::vector<tools::wallet2::address_book_row> m_address_book; */
 	//		std::pair<std::map<std::string, std::string>, std::vector<std::string>> m_account_tags;
-	//		uint64_t m_upper_transaction_size_limit; //TODO: auto-calc this value or request from daemon, now use some fixed value
+		uint64_t m_upper_transaction_size_limit; //TODO: auto-calc this value or request from daemon, now use some fixed value
 		const std::vector<std::vector<tools::wallet2::multisig_info>> *m_multisig_rescan_info;
 		const std::vector<std::vector<rct::key>> *m_multisig_rescan_k;
 		

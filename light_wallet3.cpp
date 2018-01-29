@@ -197,6 +197,7 @@ void light_wallet3::ingest__get_address_txs(
 		address_tx.m_tx_hash = tx_hash;
 		address_tx.m_incoming = incoming;
 		address_tx.m_amount  =  incoming ? total_received - total_sent : total_sent - total_received;
+		address_tx.m_fee = 0; // TODO
 		address_tx.m_block_height = t.height;
 		address_tx.m_unlock_time  = t.unlock_time;
 		address_tx.m_timestamp = tx_timestamp_s_since_1970; // this is actually a formatted string
@@ -213,6 +214,7 @@ void light_wallet3::ingest__get_address_txs(
 			wallet2::payment_details payment;
 			payment.m_tx_hash = tx_hash;
 			payment.m_amount       = total_received - total_sent;
+			payment.m_fee = 0; // TODO
 			payment.m_block_height = t.height;
 			payment.m_unlock_time  = t.unlock_time;
 			payment.m_timestamp = tx_timestamp_s_since_1970;
@@ -506,6 +508,16 @@ uint64_t light_wallet3::unlocked_balance(uint32_t index_major) const
 {
 	return (m_light_wallet_total_received - m_light_wallet_total_sent) - m_light_wallet_locked_balance; // FIXME: verify correctness
 }
+uint64_t light_wallet3::get_dynamic_per_kb_fee_estimate() const
+{
+	THROW_WALLET_EXCEPTION_IF(true, error::wallet_internal_error, "Calls to light_wallet3::get_dynamic_per_kb_fee_estimate are not expected");
+	
+	return FEE_PER_KB;
+}
+uint64_t light_wallet3::get_per_kb_fee() const
+{
+	return m_light_wallet_per_kb_fee;
+}
 //
 uint64_t light_wallet3::blockchain_height() const
 {
@@ -519,7 +531,8 @@ uint64_t light_wallet3::blockchain_height() const
 bool light_wallet3::create_signed_transaction(const std::string &to_address_string,
 											  const std::string &amount_float_string,
 											  const std::string *optl__payment_id_string, // TODO: pass this as ref?
-											  uint32_t simple_priority
+											  uint32_t simple_priority,
+											  std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn
 											  )
 {
 	 // TODO: support subaddresses
@@ -531,6 +544,7 @@ bool light_wallet3::create_signed_transaction(const std::string &to_address_stri
 										   optl__payment_id_string,
 										   simple_priority,
 										   subaddr_indices,
-										   current_subaddress_account_idx
+										   current_subaddress_account_idx,
+										   get_random_outs_fn
 										   );
 }

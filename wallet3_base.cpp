@@ -35,6 +35,7 @@
 #include "common/i18n.h"
 //
 #include "monero_transfer_utils.hpp"
+#include "monero_fork_rules.hpp"
 
 #define SUBADDRESS_LOOKAHEAD_MAJOR 50
 #define SUBADDRESS_LOOKAHEAD_MINOR 200
@@ -71,6 +72,25 @@ namespace tools
 	{
 	}
 
+	bool wallet3_base::init(
+//		std::string daemon_address,
+//		boost::optional<epee::net_utils::http::login> daemon_login,
+		uint64_t upper_transaction_size_limit//,
+//		bool ssl
+	) {
+//		m_checkpoints.init_default_checkpoints(m_testnet);
+//		if(m_http_client.is_connected())
+//			m_http_client.disconnect();
+		m_is_initialized = true;
+		m_upper_transaction_size_limit = upper_transaction_size_limit;
+//		m_daemon_address = std::move(daemon_address);
+//		m_daemon_login = std::move(daemon_login);
+		// When switching from light wallet to full wallet, we need to reset the height we got from lw node.
+//		if(m_light_wallet)
+//			m_local_bc_height = m_blockchain.size();
+//		return m_http_client.set_server(get_daemon_address(), get_daemon_login(), ssl);
+		return true;
+	}
 	bool wallet3_base::deinit()
 	{
 		m_is_initialized=false;
@@ -176,8 +196,20 @@ namespace tools
 		return monero_transfer_utils::unlocked_balance_per_subaddress(m_transfers, index_major, blockchain_height(), m_testnet);
 	}
 	//
+	uint64_t wallet3_base::get_dynamic_per_kb_fee_estimate() const
+	{
+		THROW_WALLET_EXCEPTION_IF(true, error::wallet_internal_error, "Override and implement get_dynamic_per_kb_fee_estimate");
 
-	//----------------------------------------------------------------------------------------------------
+		return FEE_PER_KB;
+	}
+	uint64_t wallet3_base::get_per_kb_fee() const
+	{
+		bool use_dyn_fee = monero_fork_rules::use_fork_rules(HF_VERSION_DYNAMIC_FEE, -720 * 1);
+		if (!use_dyn_fee)
+			return FEE_PER_KB;
+		
+		return get_dynamic_per_kb_fee_estimate();
+	}
 	cryptonote::account_public_address wallet3_base::get_subaddress(const cryptonote::subaddress_index& index) const
 	{
 		const cryptonote::account_keys& keys = m_account.get_keys();
@@ -364,7 +396,8 @@ namespace tools
 													   const std::string *optl__payment_id_string_ptr,
 													   uint32_t simple_priority,
 													   std::set<uint32_t> subaddr_indices,
-													   uint32_t current_subaddress_account_idx
+													   uint32_t current_subaddress_account_idx,
+													   std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn
 													   )
 	{
 		monero_transfer_utils::CreateTx_Args args =
@@ -379,8 +412,9 @@ namespace tools
 			subaddr_indices,
 			//
 			m_transfers,
-			_new__get_random_outs_fn(),
+			get_random_outs_fn,
 			//
+			get_per_kb_fee(),
 			blockchain_height(),
 			0, // unlock_time
 			simple_priority,
@@ -389,6 +423,8 @@ namespace tools
 			0, // min_output_count
 			0, // min_output_value
 			false, // merge_destinations - apparent default from wallet2
+			//
+			m_upper_transaction_size_limit,
 			//
 			false, // is_testnet
 			true, // is_trusted_daemon
@@ -402,21 +438,5 @@ namespace tools
 		}
 		THROW_WALLET_EXCEPTION_IF(!did_succeed, error::wallet_internal_error, "Unexpected !did_succeed=false without an error");
 		return true;
-	}
-	std::function<bool(
-		std::vector<std::vector<tools::wallet2::get_outs_entry>> &,
-		const std::list<size_t> &,
-		size_t
-	)> wallet3_base::_new__get_random_outs_fn() {
-		return [
-		] (
-			std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs,
-			const std::list<size_t> &selected_transfers,
-			size_t fake_outputs_count
-		) -> bool {
-			THROW_WALLET_EXCEPTION_IF(true, error::wallet_internal_error, "You must override and implement _new__get_random_outs_fn");
-
-			return false; // TODO: need/want this flag?
-		};
 	}
 }

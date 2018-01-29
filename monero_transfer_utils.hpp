@@ -72,6 +72,7 @@ namespace monero_transfer_utils
 		std::vector<tools::wallet2::transfer_details> transfers; 
 		std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn;
 		//
+		const uint64_t per_kb_fee;
 		uint64_t blockchain_size;
 		const uint64_t unlock_time;
 		uint32_t priority;
@@ -80,6 +81,8 @@ namespace monero_transfer_utils
 		uint32_t min_output_count;
 		uint64_t min_output_value;
 		bool merge_destinations;
+		//
+		uint64_t upper_transaction_size_limit__or_0;
 		//
 		bool is_testnet;
 		bool is_trusted_daemon;
@@ -102,11 +105,13 @@ namespace monero_transfer_utils
 		std::vector<wallet2::transfer_details> transfers,
 		std::vector<cryptonote::tx_destination_entry> dsts,
 		const size_t fake_outs_count,
+		const uint64_t per_kb_fee,
 		const uint64_t unlock_time,
 		uint64_t blockchain_size,
 		uint32_t priority,
 		uint32_t default_priority,
 		const std::vector<uint8_t>& extra,
+		uint64_t upper_transaction_size_limit__or_0,
 		uint32_t subaddr_account,
 		std::set<uint32_t> subaddr_indices,
 		bool trusted_daemon,
@@ -155,12 +160,9 @@ namespace monero_transfer_utils
 //		TransferSelected_ErrRetVals &err_retVals
 //	);
 	//
-	// NOTE/FIXME: Some of these fee methods have been temporarily internally modified and do not currently behave the same as wallet2.cpp's - compare and (constructively) normalize to integrate
 	uint64_t num_rct_outputs(); // TODO: migrate to standard function
-	uint64_t get_upper_transaction_size_limit();
+	uint64_t get_upper_transaction_size_limit(uint64_t upper_transaction_size_limit__or_0);
 	uint64_t get_fee_multiplier(uint32_t priority, uint32_t default_priority, int fee_algorithm);
-	uint64_t get_dynamic_per_kb_fee_estimate();
-	uint64_t get_per_kb_fee(bool is_lightwallet = false);
 	int get_fee_algorithm();
 	//
 	size_t estimated_rct_tx_size(int n_inputs, int mixin, int n_outputs);

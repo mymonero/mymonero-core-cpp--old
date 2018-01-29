@@ -78,10 +78,14 @@ namespace tools
 		const std::unordered_map<crypto::hash, light_wallet3::address_tx> address_txs() { return m_light_wallet_address_txs; }
 		//
 		// Transferring
+		uint64_t get_dynamic_per_kb_fee_estimate() const override; // required; but this impl intentionally causes exception on call
+		uint64_t get_per_kb_fee() const override;
+		//
 		bool create_signed_transaction(const std::string &to_address_string,
 									   const std::string &amount_float_string,
 									   const std::string *optl__payment_id_string,
-									   uint32_t simple_priority
+									   uint32_t simple_priority,
+									   std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn
 									   );
 		//
 	protected:

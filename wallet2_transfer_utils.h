@@ -150,13 +150,25 @@ namespace tools
     {
       crypto::hash m_tx_hash;
       uint64_t m_amount;
-      uint64_t m_block_height;
+	  uint64_t m_fee;
+	  uint64_t m_block_height;
       uint64_t m_unlock_time;
       uint64_t m_timestamp;
       cryptonote::subaddress_index m_subaddr_index;
     };
 
-    struct address_tx : payment_details
+	struct reserve_proof_entry
+    {
+      crypto::hash txid;
+      uint64_t index_in_tx;
+      crypto::public_key shared_secret;
+      crypto::key_image key_image;
+      crypto::signature shared_secret_sig;
+      crypto::signature key_image_sig;
+    };
+	  
+	  
+	struct address_tx : payment_details
     {
       bool m_coinbase;
       bool m_mempool;
