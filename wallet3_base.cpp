@@ -36,6 +36,8 @@
 //
 #include "monero_transfer_utils.hpp"
 #include "monero_fork_rules.hpp"
+using namespace monero_transfer_utils;
+using namespace monero_fork_rules;
 
 #define SUBADDRESS_LOOKAHEAD_MAJOR 50
 #define SUBADDRESS_LOOKAHEAD_MINOR 200
@@ -204,7 +206,7 @@ namespace tools
 	}
 	uint64_t wallet3_base::get_per_kb_fee() const
 	{
-		bool use_dyn_fee = monero_fork_rules::use_fork_rules(HF_VERSION_DYNAMIC_FEE, -720 * 1);
+		bool use_dyn_fee = use_fork_rules(HF_VERSION_DYNAMIC_FEE, -720 * 1);
 		if (!use_dyn_fee)
 			return FEE_PER_KB;
 		
@@ -400,7 +402,7 @@ namespace tools
 													   std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn
 													   )
 	{
-		monero_transfer_utils::CreateTx_Args args =
+		CreateTx_Args args =
 		{
 			m_account.get_keys(),
 			//
@@ -410,8 +412,12 @@ namespace tools
 			//
 			current_subaddress_account_idx,
 			subaddr_indices,
+			unlocked_balance(current_subaddress_account_idx),
+			m_subaddresses,
 			//
 			m_transfers,
+			m_unconfirmed_txs,
+			//
 			get_random_outs_fn,
 			//
 			get_per_kb_fee(),
@@ -420,17 +426,20 @@ namespace tools
 			simple_priority,
 			1, // default_priority
 			//
-			0, // min_output_count
-			0, // min_output_value
-			false, // merge_destinations - apparent default from wallet2
-			//
 			m_upper_transaction_size_limit,
 			//
+			0, // min_output_count
+			0, // min_output_value
+			//
+			m_multisig_threshold,
+			m_multisig_signers,
+			//
+			false, // merge_destinations - apparent default from wallet2
 			false, // is_testnet
 			true, // is_trusted_daemon
-			true // is_lightwallet
+			m_multisig // is_wallet_multisig
 		};
-		monero_transfer_utils::CreateTx_RetVals retVals = {};
+		CreateTx_RetVals retVals = {};
 		bool did_succeed = monero_transfer_utils::create_signed_transaction(args, retVals);
 		if (retVals.didError) {
 			// TODO: return retVals.err_string -- but the err_string probably has to be returned as a callback because get_random_outs_fn is not synchronous
