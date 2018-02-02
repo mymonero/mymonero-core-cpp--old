@@ -86,7 +86,7 @@ namespace tools
 			const std::string &amount_float_string,
 			const std::string *optl__payment_id_string,
 			uint32_t simple_priority,
-			std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn, // this function MUST be synchronous
+			std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t)> get_random_outs_fn, // this function MUST be synchronous
 			//
 			monero_transfer_utils::CreateSignedTxs_RetVals &retVals
 		);

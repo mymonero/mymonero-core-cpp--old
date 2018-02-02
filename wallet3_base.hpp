@@ -168,10 +168,11 @@ namespace tools
 			const std::string &to_address_string,
 			const std::string &amount_float_string,
 			const std::string *optl__payment_id_string_ptr,
+			uint32_t mixin,
 			uint32_t simple_priority,
 			std::set<uint32_t> subaddr_indices,
 			uint32_t current_subaddress_account_idx,
-			std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn, // this function MUST be synchronous
+			std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t)> get_random_outs_fn, // this function MUST be synchronous
 			//
 			monero_transfer_utils::CreateSignedTxs_RetVals &retVals
 		); // have your concrete subclass call this with special parameters

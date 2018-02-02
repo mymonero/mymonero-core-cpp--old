@@ -533,7 +533,7 @@ bool light_wallet3::create_signed_transaction(
 	const std::string &amount_float_string,
 	const std::string *optl__payment_id_string, // TODO: pass this as ref?
 	uint32_t simple_priority,
-	std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn,
+	std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t)> get_random_outs_fn,
 	//
 	monero_transfer_utils::CreateSignedTxs_RetVals &retVals
 ) {
@@ -545,6 +545,7 @@ bool light_wallet3::create_signed_transaction(
 		to_address_string,
 		amount_float_string,
 		optl__payment_id_string,
+		monero_transfer_utils::fixed_mixinsize(),
 		simple_priority,
 		subaddr_indices,
 		current_subaddress_account_idx,
