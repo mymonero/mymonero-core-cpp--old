@@ -62,6 +62,7 @@
 #include "node_rpc_proxy.h"
 //
 #include "wallet2_transfer_utils.h" // for types
+#include "monero_transfer_utils.hpp"
 
 namespace tools
 {
@@ -163,14 +164,17 @@ namespace tools
 		void process_unconfirmed(const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t height);
 		//
 		// Transferring
-		bool base__create_signed_transaction(const std::string &to_address_string,
-											 const std::string &amount_float_string,
-											 const std::string *optl__payment_id_string_ptr,
-											 uint32_t simple_priority,
-											 std::set<uint32_t> subaddr_indices,
-											 uint32_t current_subaddress_account_idx,
-											 std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn
-											 ); // have your concrete subclass call this with special parameters
+		bool base__create_signed_transaction(
+			const std::string &to_address_string,
+			const std::string &amount_float_string,
+			const std::string *optl__payment_id_string_ptr,
+			uint32_t simple_priority,
+			std::set<uint32_t> subaddr_indices,
+			uint32_t current_subaddress_account_idx,
+			std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn, // this function MUST be synchronous
+			//
+			monero_transfer_utils::CreateSignedTxs_RetVals &retVals
+		); // have your concrete subclass call this with special parameters
 		//
 	protected: // formerly private; changed to enable subclassing
 		

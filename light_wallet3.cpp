@@ -73,10 +73,10 @@ light_wallet3::light_wallet3(bool testnet, bool restricted)
 }
 //
 void light_wallet3::ingest__get_address_info(
-	bool didError,
+	bool did_error,
 	const light_wallet3_server_api::COMMAND_RPC_GET_ADDRESS_INFO::response &res
 ) {
-	if (didError) {
+	if (did_error) {
 		m_light_wallet_connected = false;
 		return;
 	}
@@ -528,23 +528,27 @@ uint64_t light_wallet3::blockchain_height() const
 //
 // Transferring
 //
-bool light_wallet3::create_signed_transaction(const std::string &to_address_string,
-											  const std::string &amount_float_string,
-											  const std::string *optl__payment_id_string, // TODO: pass this as ref?
-											  uint32_t simple_priority,
-											  std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn
-											  )
-{
+bool light_wallet3::create_signed_transaction(
+	const std::string &to_address_string,
+	const std::string &amount_float_string,
+	const std::string *optl__payment_id_string, // TODO: pass this as ref?
+	uint32_t simple_priority,
+	std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn,
+	//
+	monero_transfer_utils::CreateSignedTxs_RetVals &retVals
+) {
 	 // TODO: support subaddresses
 	std::set<uint32_t> subaddr_indices;
 	uint32_t current_subaddress_account_idx = 0;
 	//
-	return base__create_signed_transaction(to_address_string,
-										   amount_float_string,
-										   optl__payment_id_string,
-										   simple_priority,
-										   subaddr_indices,
-										   current_subaddress_account_idx,
-										   get_random_outs_fn
-										   );
+	return base__create_signed_transaction(
+		to_address_string,
+		amount_float_string,
+		optl__payment_id_string,
+		simple_priority,
+		subaddr_indices,
+		current_subaddress_account_idx,
+		get_random_outs_fn,
+		retVals
+	);
 }

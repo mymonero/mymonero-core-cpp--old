@@ -106,8 +106,8 @@ namespace
 //
 // monero_transfer_utils
 bool monero_transfer_utils::create_signed_transaction(
-	const CreateTx_Args &args,
-	CreateTx_RetVals &retVals
+	const CreateSignedTxs_Args &args,
+	CreateSignedTxs_RetVals &retVals
 ) {
 	retVals = {};
 	//
@@ -134,7 +134,7 @@ bool monero_transfer_utils::create_signed_transaction(
 				}
 			}
 			if (!r) {
-				retVals.didError = true;
+				retVals.did_error = true;
 				retVals.err_string = "payment id has invalid format, expected 16 or 64 character hex string";
 				return false;
 			}
@@ -148,7 +148,7 @@ bool monero_transfer_utils::create_signed_transaction(
 		cryptonote::address_parse_info info;
 		r = cryptonote::get_account_address_from_str(info, args.is_testnet, args.to_address_string);
 		if (!r) {
-			retVals.didError = true;
+			retVals.did_error = true;
 			retVals.err_string = "couldn't parse address.";
 			return false;
 		}
@@ -157,7 +157,7 @@ bool monero_transfer_utils::create_signed_transaction(
 		//
 		if (info.has_payment_id) {
 			if (payment_id_seen) {
-				retVals.didError = true;
+				retVals.did_error = true;
 				retVals.err_string = "a single transaction cannot use more than one payment id";
 				return false;
 			}
@@ -165,7 +165,7 @@ bool monero_transfer_utils::create_signed_transaction(
 			set_encrypted_payment_id_to_tx_extra_nonce(extra_nonce, info.payment_id);
 			bool r = add_extra_nonce_to_tx_extra(extra, extra_nonce);
 			if (!r) {
-				retVals.didError = true;
+				retVals.did_error = true;
 				retVals.err_string = "failed to set up payment id, though it was decoded correctly";
 				return false;
 			}
@@ -190,7 +190,8 @@ bool monero_transfer_utils::create_signed_transaction(
 //		}
 //		unlock_block = bc_height + locked_blocks;
 //	}
-	std::vector<tools::wallet2::pending_tx> ptx_vector = monero_transfer_utils::create_transactions_3(
+	CreatePendingTx_RetVals pendingTxs_retVals;
+	bool r = monero_transfer_utils::create_transactions_3(
 		args.account_keys,
 		args.transfers,
 		args.unconfirmed_txs,
@@ -218,11 +219,19 @@ bool monero_transfer_utils::create_signed_transaction(
 		args.merge_destinations,
 		args.is_trusted_daemon,
 		args.is_testnet,
-		args.is_wallet_multisig
+		args.is_wallet_multisig,
+		//
+		pendingTxs_retVals
 	);
-	// TODO: wrap the above in a try/catch and return errors
-	if (ptx_vector.empty()) {
-		retVals.didError = true;
+	if (pendingTxs_retVals.did_error) {
+		retVals.did_error = true;
+		retVals.err_string = *(pendingTxs_retVals.err_string);
+		//
+		return false;
+	}
+	THROW_WALLET_EXCEPTION_IF(!r, error::wallet_internal_error, "Unexpected !did_succeed=false without an error");
+	if ((*pendingTxs_retVals.pending_txs).empty()) {
+		retVals.did_error = true;
 		retVals.err_string = "No outputs found, or daemon is not ready"; // TODO: improve error message appropriateness
 		return false;
 	}
@@ -231,7 +240,7 @@ bool monero_transfer_utils::create_signed_transaction(
 	//
 	return true;
 }
-std::vector<wallet2::pending_tx> monero_transfer_utils::create_transactions_3(
+bool monero_transfer_utils::create_transactions_3(
 	const cryptonote::account_keys &account_keys,
 	const std::vector<wallet2::transfer_details> &transfers,
 	std::unordered_map<crypto::hash, wallet2::unconfirmed_transfer_details> unconfirmed_txs,
@@ -259,8 +268,12 @@ std::vector<wallet2::pending_tx> monero_transfer_utils::create_transactions_3(
 	bool merge_destinations,
 	bool trusted_daemon,
 	bool is_testnet,
-	bool is_wallet_multisig
+	bool is_wallet_multisig,
+	//
+	CreatePendingTx_RetVals &retVals
 ) {
+	retVals = {};
+	//
 	std::vector<std::pair<uint32_t, std::vector<size_t>>> unused_transfers_indices_per_subaddr;
 	std::vector<std::pair<uint32_t, std::vector<size_t>>> unused_dust_indices_per_subaddr;
 	uint64_t needed_money;
@@ -340,8 +353,12 @@ std::vector<wallet2::pending_tx> monero_transfer_utils::create_transactions_3(
 		balance_subtotal += balance_per_subaddr[index_minor];
 		unlocked_balance_subtotal += unlocked_balance_per_subaddr[index_minor];
 	}
-	THROW_WALLET_EXCEPTION_IF(needed_money > balance_subtotal, error::not_enough_money,
-							  balance_subtotal, needed_money, 0);
+	if (needed_money > balance_subtotal) {
+		retVals.did_error = true;
+		retVals.err_string = "Insufficient funds";
+		// TODO: return these error::not_enough_money, balance_subtotal, needed_money, 0
+		return false;
+	}
 	// first check overall balance is enough, then unlocked one, so we throw distinct exceptions
 	THROW_WALLET_EXCEPTION_IF(needed_money > unlocked_balance_subtotal, error::not_enough_unlocked_money,
 							  unlocked_balance_subtotal, needed_money, 0);
@@ -405,7 +422,8 @@ std::vector<wallet2::pending_tx> monero_transfer_utils::create_transactions_3(
 	LOG_PRINT_L2("Starting with " << num_nondust_outputs << " non-dust outputs and " << num_dust_outputs << " dust outputs");
 	
 	if (unused_dust_indices_per_subaddr.empty() && unused_transfers_indices_per_subaddr.empty())
-		return std::vector<wallet2::pending_tx>();
+		retVals.pending_txs = std::vector<wallet2::pending_tx>();
+		return true;
 	
 	// if empty, put dummy entry so that the front can be referenced later in the loop
 	if (unused_dust_indices_per_subaddr.empty())
@@ -714,7 +732,8 @@ std::vector<wallet2::pending_tx> monero_transfer_utils::create_transactions_3(
 	}
 	
 	// if we made it this far, we're OK to actually send the transactions
-	return ptx_vector;
+	retVals.pending_txs = ptx_vector;
+	return true;
 }
 //
 //

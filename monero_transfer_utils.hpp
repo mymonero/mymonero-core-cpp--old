@@ -56,9 +56,9 @@ namespace monero_transfer_utils
 {
 	//
 	// Interface - Constructing new transactions
-	struct CreateTx_Args
+	struct CreateSignedTxs_Args
 	{
-		CreateTx_Args() = delete; // disallow `CreateTx_Args foo;` default constructor
+		CreateSignedTxs_Args() = delete; // disallow `Args foo;` default constructor
 		//
 		const cryptonote::account_keys &account_keys;
 		//
@@ -74,7 +74,7 @@ namespace monero_transfer_utils
 		const wallet2::transfer_container &transfers;
 		std::unordered_map<crypto::hash, tools::wallet2::unconfirmed_transfer_details> unconfirmed_txs;
 		//
-		std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn;
+		std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn; // this function MUST be synchronous
 		//
 		const uint64_t per_kb_fee;
 		uint64_t blockchain_size;
@@ -95,20 +95,29 @@ namespace monero_transfer_utils
 		bool is_trusted_daemon;
 		bool is_wallet_multisig;
 	};
-	struct CreateTx_RetVals
+	struct CreateSignedTxs_RetVals // TODO: derive from base RetVals for did_error, err_string, etc
 	{
-		bool didError;
-		std::string err_string; // this is not defined when didError!=true
+		bool did_error;
+		boost::optional<std::string> err_string; // this is boost::none when did_error!=true
 		//
-		tools::wallet2::signed_tx_set signed_tx_set;
+		boost::optional<tools::wallet2::signed_tx_set> signed_tx_set;
 	};
 	bool create_signed_transaction( // returns !didError
-		const CreateTx_Args &args,
-		CreateTx_RetVals &retVals // initializes a retVals for you
+		const CreateSignedTxs_Args &args,
+		CreateSignedTxs_RetVals &retVals // initializes a retVals for you
 	);
 	//
-	// Shared / Utility / Common - Functions
-	std::vector<tools::wallet2::pending_tx> create_transactions_3(
+	//
+	// Shared - create_transactions_*
+	//
+	struct CreatePendingTx_RetVals // TODO: derive from base RetVals for did_error, err_string, etc
+	{
+		bool did_error;
+		boost::optional<std::string> err_string; // this is boost::none when did_error!=true
+		//
+		boost::optional<std::vector<tools::wallet2::pending_tx>> pending_txs;
+	};
+	bool create_transactions_3(
 		const cryptonote::account_keys &account_keys,
 		const std::vector<wallet2::transfer_details> &transfers,
 		std::unordered_map<crypto::hash, tools::wallet2::unconfirmed_transfer_details> unconfirmed_txs,
@@ -136,8 +145,13 @@ namespace monero_transfer_utils
 		bool merge_destinations,
 		bool trusted_daemon,
 		bool is_testnet,
-		bool is_wallet_multisig
+		bool is_wallet_multisig,
+		//
+		CreatePendingTx_RetVals &retVals // initializes a retVals for you
 	);	
+	//
+	//
+	// Shared - Utilities
 	//
 	template<typename T>
 	void transfer_selected(const wallet2::transfer_container &transfers,

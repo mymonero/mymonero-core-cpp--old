@@ -222,7 +222,7 @@ bool monero_wallet_utils::validate_wallet_components_with(
 		inputs.address_string
 	);
 	if (r == false) {
-		outputs.didError = true;
+		outputs.did_error = true;
 		outputs.err_string = "Invalid address";
 		//
 		return false;
@@ -232,7 +232,7 @@ bool monero_wallet_utils::validate_wallet_components_with(
 	crypto::secret_key sec_viewKey;
 	r = string_tools::hex_to_pod(inputs.sec_viewKey_string, sec_viewKey);
 	if (r == false) {
-		outputs.didError = true;
+		outputs.did_error = true;
 		outputs.err_string = "Invalid view key";
 		//
 		return false;
@@ -241,13 +241,13 @@ bool monero_wallet_utils::validate_wallet_components_with(
 	crypto::public_key expected_pub_viewKey;
 	r = crypto::secret_key_to_public_key(sec_viewKey, expected_pub_viewKey);
 	if (r == false) {
-		outputs.didError = true;
+		outputs.did_error = true;
 		outputs.err_string = "Invalid view key";
 		//
 		return false;
 	}
 	if (decoded_address_info.address.m_view_public_key != expected_pub_viewKey) {
-		outputs.didError = true;
+		outputs.did_error = true;
 		outputs.err_string = "View key does not match address";
 		//
 		return false;
@@ -262,7 +262,7 @@ bool monero_wallet_utils::validate_wallet_components_with(
 		if ((*inputs.optl__sec_spendKey_string).empty() == false) {
 			r = string_tools::hex_to_pod(*inputs.optl__sec_spendKey_string, sec_spendKey);
 			if (r == false) { // this is an actual parse error exit condition
-				outputs.didError = true;
+				outputs.did_error = true;
 				outputs.err_string = "Invalid spend key";
 				//
 				return false;
@@ -271,13 +271,13 @@ bool monero_wallet_utils::validate_wallet_components_with(
 			crypto::public_key expected_pub_spendKey;
 			r = crypto::secret_key_to_public_key(sec_spendKey, expected_pub_spendKey);
 			if (r == false) {
-				outputs.didError = true;
+				outputs.did_error = true;
 				outputs.err_string = "Invalid spend key";
 				//
 				return false;
 			}
 			if (decoded_address_info.address.m_spend_public_key != expected_pub_spendKey) {
-				outputs.didError = true;
+				outputs.did_error = true;
 				outputs.err_string = "Spend key does not match address";
 				//
 				return false;
@@ -294,7 +294,7 @@ bool monero_wallet_utils::validate_wallet_components_with(
 				from_legacy16B_lw_seed = false; // to be clear
 				bool r = string_tools::hex_to_pod((*inputs.optl__sec_seed_string), sec_seed);
 				if (!r) {
-					outputs.didError = true;
+					outputs.did_error = true;
 					outputs.err_string = "Invalid seed";
 					//
 					return false;
@@ -304,7 +304,7 @@ bool monero_wallet_utils::validate_wallet_components_with(
 				crypto::legacy16B_secret_key legacy16B_sec_seed;
 				bool r = string_tools::hex_to_pod((*inputs.optl__sec_seed_string), legacy16B_sec_seed);
 				if (!r) {
-					outputs.didError = true;
+					outputs.did_error = true;
 					outputs.err_string = "Invalid seed";
 					//
 					return false;
@@ -316,25 +316,25 @@ bool monero_wallet_utils::validate_wallet_components_with(
 			const cryptonote::account_keys& expected_account_keys = expected_account.get_keys();
 			// TODO: assert sec_spendKey initialized?
 			if (expected_account_keys.m_view_secret_key != sec_viewKey) {
-				outputs.didError = true;
+				outputs.did_error = true;
 				outputs.err_string = "Private view key does not match generated key";
 				//
 				return false;
 			}
 			if (expected_account_keys.m_spend_secret_key != sec_spendKey) {
-				outputs.didError = true;
+				outputs.did_error = true;
 				outputs.err_string = "Private spend key does not match generated key";
 				//
 				return false;
 			}
 			if (expected_account_keys.m_account_address.m_view_public_key != decoded_address_info.address.m_view_public_key) {
-				outputs.didError = true;
+				outputs.did_error = true;
 				outputs.err_string = "Public view key does not match generated key";
 				//
 				return false;
 			}
 			if (expected_account_keys.m_account_address.m_spend_public_key != decoded_address_info.address.m_spend_public_key) {
-				outputs.didError = true;
+				outputs.did_error = true;
 				outputs.err_string = "Public spend key does not match generated key";
 				//
 				return false;

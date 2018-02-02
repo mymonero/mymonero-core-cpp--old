@@ -56,7 +56,7 @@ namespace tools
 		light_wallet3(bool testnet = false, bool restricted = false);
 		//
 		// Imperatives - Response reception
-		void ingest__get_address_info(bool didError, const light_wallet3_server_api::COMMAND_RPC_GET_ADDRESS_INFO::response &res); // sets connected
+		void ingest__get_address_info(bool did_error, const light_wallet3_server_api::COMMAND_RPC_GET_ADDRESS_INFO::response &res); // sets connected
 		// the following 'ingest__' methods assume successful responses
 		void ingest__get_address_txs(const light_wallet3_server_api::COMMAND_RPC_GET_ADDRESS_TXS::response &ires);
 		void ingest__get_unspent_outs(const light_wallet3_server_api::COMMAND_RPC_GET_UNSPENT_OUTS::response &ores, size_t light_wallet_requested_outputs_count);
@@ -81,12 +81,15 @@ namespace tools
 		uint64_t get_dynamic_per_kb_fee_estimate() const override; // required; but this impl intentionally causes exception on call
 		uint64_t get_per_kb_fee() const override;
 		//
-		bool create_signed_transaction(const std::string &to_address_string,
-									   const std::string &amount_float_string,
-									   const std::string *optl__payment_id_string,
-									   uint32_t simple_priority,
-									   std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn
-									   );
+		bool create_signed_transaction(
+			const std::string &to_address_string,
+			const std::string &amount_float_string,
+			const std::string *optl__payment_id_string,
+			uint32_t simple_priority,
+			std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn, // this function MUST be synchronous
+			//
+			monero_transfer_utils::CreateSignedTxs_RetVals &retVals
+		);
 		//
 	protected:
 		bool m_light_wallet_connected;

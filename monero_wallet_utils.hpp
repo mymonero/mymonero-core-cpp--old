@@ -127,14 +127,14 @@ namespace monero_wallet_utils
 	};
 	struct WalletComponentsValidationResults
 	{
-		bool didError;
+		bool did_error;
 		std::string err_string;
-		bool isValid; // this will naturally remain false if didError=true
+		bool isValid; // this will naturally remain false if did_error=true
 		std::string pub_spendKey_string;
 		std::string pub_viewKey_string;
 		bool isInViewOnlyMode; // !sec_seed && !sec_spendKey
 	};
-	bool validate_wallet_components_with( // returns !didError
+	bool validate_wallet_components_with( // returns !did_error
 		const WalletComponentsToValidate &inputs,
 		WalletComponentsValidationResults &outputs
 	);

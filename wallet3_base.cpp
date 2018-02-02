@@ -393,16 +393,18 @@ namespace tools
 	}
 	//
 	// Transferring
-	bool wallet3_base::base__create_signed_transaction(const std::string &to_address_string,
-													   const std::string &amount_float_string,
-													   const std::string *optl__payment_id_string_ptr,
-													   uint32_t simple_priority,
-													   std::set<uint32_t> subaddr_indices,
-													   uint32_t current_subaddress_account_idx,
-													   std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn
-													   )
-	{
-		CreateTx_Args args =
+	bool wallet3_base::base__create_signed_transaction(
+		const std::string &to_address_string,
+		const std::string &amount_float_string,
+		const std::string *optl__payment_id_string_ptr,
+		uint32_t simple_priority,
+		std::set<uint32_t> subaddr_indices,
+		uint32_t current_subaddress_account_idx,
+		std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::list<size_t> &, size_t)> get_random_outs_fn,
+		//
+		monero_transfer_utils::CreateSignedTxs_RetVals &retVals
+	) {
+		CreateSignedTxs_Args args =
 		{
 			m_account.get_keys(),
 			//
@@ -439,13 +441,14 @@ namespace tools
 			true, // is_trusted_daemon
 			m_multisig // is_wallet_multisig
 		};
-		CreateTx_RetVals retVals = {};
-		bool did_succeed = monero_transfer_utils::create_signed_transaction(args, retVals);
-		if (retVals.didError) {
-			// TODO: return retVals.err_string -- but the err_string probably has to be returned as a callback because get_random_outs_fn is not synchronous
-			return false;
+		bool r = monero_transfer_utils::create_signed_transaction(
+			args,
+			retVals // passing retVals ref through from fn args
+		);
+		if (retVals.did_error) {
+			return false; // retVals already populated with err values
 		}
-		THROW_WALLET_EXCEPTION_IF(!did_succeed, error::wallet_internal_error, "Unexpected !did_succeed=false without an error");
+		THROW_WALLET_EXCEPTION_IF(!r, error::wallet_internal_error, "Unexpected !did_succeed=false without an error");
 		return true;
 	}
 }
