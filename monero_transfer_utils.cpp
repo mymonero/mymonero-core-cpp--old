@@ -3,7 +3,7 @@
 //  MyMonero
 //
 //  Created by Paul Shapiro on 12/2/17.
-//  Copyright © 2017 MyMonero. All rights reserved.
+//  Copyright © 2018 MyMonero. All rights reserved.
 //
 //
 #include <random>
@@ -191,7 +191,7 @@ bool monero_transfer_utils::create_signed_transaction(
 //		unlock_block = bc_height + locked_blocks;
 //	}
 	CreatePendingTx_RetVals pendingTxs_retVals;
-	bool r = create_transactions_3(
+	bool r = create_pending_transactions_3(
 		args.account_keys,
 		args.transfers,
 		args.unconfirmed_txs,
@@ -227,7 +227,7 @@ bool monero_transfer_utils::create_signed_transaction(
 	);
 	if (pendingTxs_retVals.did_error) {
 		retVals.did_error = true;
-		retVals.err_string = *(pendingTxs_retVals.err_string);
+		retVals.err_string = *pendingTxs_retVals.err_string;
 		//
 		return false;
 	}
@@ -242,7 +242,7 @@ bool monero_transfer_utils::create_signed_transaction(
 	//
 	return true;
 }
-bool monero_transfer_utils::create_transactions_3(
+bool monero_transfer_utils::create_pending_transactions_3(
 	const cryptonote::account_keys &account_keys,
 	const std::vector<wallet2::transfer_details> &transfers,
 	std::unordered_map<crypto::hash, wallet2::unconfirmed_transfer_details> unconfirmed_txs,
@@ -272,7 +272,7 @@ bool monero_transfer_utils::create_transactions_3(
 	bool is_testnet,
 	bool is_wallet_multisig,
 	//
-	std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t)> get_random_outs_fn, // this function MUST be synchronous
+	monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
 	//
 	CreatePendingTx_RetVals &retVals
 ) {
@@ -622,10 +622,16 @@ bool monero_transfer_utils::create_transactions_3(
 			
 			LOG_PRINT_L2("Trying to create a tx now, with " << tx.dsts.size() << " outputs and " <<
 						 tx.selected_transfers.size() << " inputs");
+			RetVals_base tfer_retVals;
 			if (use_rct)
-				transfer_selected_rct(transfers, subaddresses, is_wallet_multisig, is_testnet, upper_transaction_size_limit, account_keys, multisig_threshold, wallet_multisig_signers, tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra, test_tx, test_ptx, bulletproof, get_random_outs_fn);
+				transfer_selected_rct(transfers, subaddresses, is_wallet_multisig, is_testnet, upper_transaction_size_limit, account_keys, multisig_threshold, wallet_multisig_signers, tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra, test_tx, test_ptx, bulletproof, get_random_outs_fn, tfer_retVals);
 			else
-				transfer_selected(transfers, subaddresses, is_wallet_multisig, is_testnet, upper_transaction_size_limit, account_keys, multisig_threshold, tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra, detail::digit_split_strategy, tx_dust_policy(::config::DEFAULT_DUST_THRESHOLD), test_tx, test_ptx, get_random_outs_fn);
+				transfer_selected(transfers, subaddresses, is_wallet_multisig, is_testnet, upper_transaction_size_limit, account_keys, multisig_threshold, tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra, detail::digit_split_strategy, tx_dust_policy(::config::DEFAULT_DUST_THRESHOLD), test_tx, test_ptx, get_random_outs_fn, tfer_retVals);
+			if (tfer_retVals.did_error) {
+				retVals.did_error = true;
+				retVals.err_string = *tfer_retVals.err_string;
+				return false;
+			}
 			auto txBlob = t_serializable_object_to_blob(test_ptx.tx);
 			needed_fee = calculate_fee(fee_per_kb, txBlob, fee_multiplier);
 			available_for_fee = test_ptx.fee + test_ptx.change_dts.amount + (!test_ptx.dust_added_to_fee ? test_ptx.dust : 0);
@@ -663,10 +669,16 @@ bool monero_transfer_utils::create_transactions_3(
 			{
 				LOG_PRINT_L2("We made a tx, adjusting fee and saving it, we need " << print_money(needed_fee) << " and we have " << print_money(test_ptx.fee));
 				while (needed_fee > test_ptx.fee) {
+					RetVals_base tfer_retVals;
 					if (use_rct)
-						transfer_selected_rct(transfers, subaddresses, is_wallet_multisig, is_testnet, upper_transaction_size_limit, account_keys, multisig_threshold, wallet_multisig_signers, tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra, test_tx, test_ptx, bulletproof, get_random_outs_fn);
+						transfer_selected_rct(transfers, subaddresses, is_wallet_multisig, is_testnet, upper_transaction_size_limit, account_keys, multisig_threshold, wallet_multisig_signers, tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra, test_tx, test_ptx, bulletproof, get_random_outs_fn, tfer_retVals);
 					else
-						transfer_selected(transfers, subaddresses, is_wallet_multisig, is_testnet, upper_transaction_size_limit, account_keys, multisig_threshold, tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra, detail::digit_split_strategy, tx_dust_policy(::config::DEFAULT_DUST_THRESHOLD), test_tx, test_ptx, get_random_outs_fn);
+						transfer_selected(transfers, subaddresses, is_wallet_multisig, is_testnet, upper_transaction_size_limit, account_keys, multisig_threshold, tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra, detail::digit_split_strategy, tx_dust_policy(::config::DEFAULT_DUST_THRESHOLD), test_tx, test_ptx, get_random_outs_fn, tfer_retVals);
+					if (tfer_retVals.did_error) {
+						retVals.did_error = true;
+						retVals.err_string = *tfer_retVals.err_string;
+						return false;
+					}
 					txBlob = t_serializable_object_to_blob(test_ptx.tx);
 					needed_fee = calculate_fee(fee_per_kb, txBlob, fee_multiplier);
 					LOG_PRINT_L2("Made an attempt at a  final " << get_size_string(txBlob) << " tx, with " << print_money(test_ptx.fee) <<
@@ -762,9 +774,12 @@ void monero_transfer_utils::transfer_selected(
 	cryptonote::transaction& tx,
 	wallet2::pending_tx &ptx,
 	//
-	std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t)> get_random_outs_fn // this function MUST be synchronous
+	monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
+	tools::RetVals_base &retVals // use custom type if it becomes necessary
 
 ) {
+	retVals = {}; // must init
+	//
 	using namespace cryptonote;
 	// throw if attempting a transaction with no destinations
 	THROW_WALLET_EXCEPTION_IF(dsts.empty(), error::zero_destination);
@@ -798,10 +813,11 @@ void monero_transfer_utils::transfer_selected(
 		THROW_WALLET_EXCEPTION_IF(subaddr_account != transfers[*i].m_subaddr_index.major, error::wallet_internal_error, "the tx uses funds from multiple accounts");
 	
 	if (outs.empty()) {
-		bool r = get_random_outs_fn(outs, selected_transfers, fake_outputs_count);
+		monero_transfer_utils::get_random_outs_fn_RetVals fn__retVals;
+		bool r = get_random_outs_fn(outs, selected_transfers, fake_outputs_count, fn__retVals);
 		if (!r) {
-			// TODO: pass back actual error ... and bail from fn here
-			THROW_WALLET_EXCEPTION_IF(true, error::wallet_internal_error, "get_random_outs_fn failed");
+			retVals.did_error = true;
+			retVals.err_string = *fn__retVals.err_string;
 			return;
 		}
 	}
@@ -944,8 +960,11 @@ void monero_transfer_utils::transfer_selected_rct(
 	wallet2::pending_tx &ptx,
 	bool bulletproof,
 	//
-	std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t)> get_random_outs_fn // this function MUST be synchronous
+	monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
+	tools::RetVals_base &retVals
 ) {
+	retVals = {}; // must init
+	//
 	using namespace cryptonote;
 	// throw if attempting a transaction with no destinations
 	THROW_WALLET_EXCEPTION_IF(dsts.empty(), error::zero_destination);
@@ -1008,10 +1027,11 @@ void monero_transfer_utils::transfer_selected_rct(
 		THROW_WALLET_EXCEPTION_IF(subaddr_account != transfers[*i].m_subaddr_index.major, error::wallet_internal_error, "the tx uses funds from multiple accounts");
 	
 	if (outs.empty()) {
-		bool r = get_random_outs_fn(outs, selected_transfers, fake_outputs_count);
+		monero_transfer_utils::get_random_outs_fn_RetVals fn__retVals;
+		bool r = get_random_outs_fn(outs, selected_transfers, fake_outputs_count, fn__retVals);
 		if (!r) {
-			// TODO: pass back actual error ... and bail from fn here
-			THROW_WALLET_EXCEPTION_IF(true, error::wallet_internal_error, "get_random_outs_fn failed");
+			retVals.did_error = true;
+			retVals.err_string = *fn__retVals.err_string;
 			return;
 		}
 	}

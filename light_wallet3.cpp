@@ -423,20 +423,23 @@ void light_wallet3::ingest__get_unspent_outs(
 	}
 }
 
-bool light_wallet3::populate_from__get_random_outs(const light_wallet3_server_api::COMMAND_RPC_GET_RANDOM_OUTS::response &ores, std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs, const std::vector<size_t> &selected_transfers, size_t fake_outputs_count, size_t requested_outputs_count) const
+bool light_wallet3::populate_from__get_random_outs(const light_wallet3_server_api::COMMAND_RPC_GET_RANDOM_OUTS::response &ores, std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs, const std::vector<size_t> &selected_transfers, size_t fake_outputs_count, size_t requested_outputs_count, tools::RetVals_base &retVals) const
 {
+	retVals = {}; // must initialize
+	//
 	if (ores.amount_outs.empty()) {
-		//		THROW_WALLET_EXCEPTION_IF(ores.amount_outs.empty() , error::wallet_internal_error, "No outputs recieved from light wallet node. Error: " + ores.Error);
-		return false; // no outputs
-		
-		// TODO: return err w/retvals 
-		
+		retVals.did_error = true;
+		retVals.err_string = "No outputs received from server.";
+		return false;
 	}
 	
 	// Check if we got enough outputs for each amount
 	for(auto& out: ores.amount_outs) {
-		const uint64_t out_amount = boost::lexical_cast<uint64_t>(out.amount);
-		THROW_WALLET_EXCEPTION_IF(out.outputs.size() < requested_outputs_count , error::wallet_internal_error, "Not enough outputs for amount: " + boost::lexical_cast<std::string>(out.amount));
+		if (out.outputs.size() < requested_outputs_count) {
+			retVals.did_error = true;
+			retVals.err_string = "Not enough outputs for amount: " + boost::lexical_cast<std::string>(out.amount);
+			return false;
+		}
 		MDEBUG(out.outputs.size() << " outputs for amount "+ boost::lexical_cast<std::string>(out.amount) + " received from light wallet node");
 	}
 	
@@ -616,7 +619,7 @@ bool light_wallet3::create_signed_transaction(
 	const std::string &amount_float_string,
 	const std::string *optl__payment_id_string, // TODO: pass this as ref?
 	uint32_t simple_priority,
-	std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t)> get_random_outs_fn,
+	monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn,
 	//
 	monero_transfer_utils::CreateSignedTxs_RetVals &retVals
 ) const {

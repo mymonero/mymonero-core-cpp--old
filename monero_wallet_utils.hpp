@@ -45,6 +45,8 @@
 #include "mnemonics/singleton.h"
 #include "mnemonics/english.h"
 //
+using namespace tools;
+#include "tools__ret_vals.hpp"
 //
 // Legacy seed / mnemonic utils fns
 namespace crypto
@@ -67,11 +69,8 @@ namespace monero_wallet_utils
 {
 	//
 	// Accounts
-	struct MnemonicDecodedSeed_RetVals
+	struct MnemonicDecodedSeed_RetVals: RetVals_base
 	{
-		bool did_error = false;
-		boost::optional<std::string> optl__err_string = boost::none;
-		//
 		boost::optional<crypto::secret_key> optl__sec_seed = boost::none;
 		boost::optional<std::string> optl__sec_seed_string = boost::none;
 		boost::optional<std::string> optl__mnemonic_string = boost::none;
@@ -98,11 +97,8 @@ namespace monero_wallet_utils
 		//
 		std::string mnemonic_string; // mnemonic_language is not returned because it must be provided to all functions which can return a WalletDescription
 	};
-	struct WalletDescriptionRetVals
+	struct WalletDescriptionRetVals: RetVals_base
 	{
-		bool did_error = false;
-		boost::optional<std::string> optl__err_string = boost::none;
-		//
 		boost::optional<WalletDescription> optl__desc = boost::none;
 	};
 	bool new_wallet(
@@ -125,10 +121,8 @@ namespace monero_wallet_utils
 		const std::string *optl__sec_seed_string;
 		bool isTestnet;
 	};
-	struct WalletComponentsValidationResults
+	struct WalletComponentsValidationResults: RetVals_base
 	{
-		bool did_error;
-		std::string err_string;
 		bool isValid; // this will naturally remain false if did_error=true
 		std::string pub_spendKey_string;
 		std::string pub_viewKey_string;

@@ -43,8 +43,9 @@
 #include "cryptonote_tx_utils.h"
 #include "wallet_errors.h"
 //
-#include "wallet2_transfer_utils.h" // to be renamed / phased out after moving relevant types
 using namespace tools;
+#include "tools__ret_vals.hpp"
+#include "wallet2_transfer_utils.h" // to be renamed / phased out after moving relevant types
 //
 #define SECOND_OUTPUT_RELATEDNESS_THRESHOLD 0.0f
 // used to choose when to stop adding outputs to a tx
@@ -56,6 +57,11 @@ namespace monero_transfer_utils
 {
 	//
 	// Interface - Constructing new transactions
+	struct get_random_outs_fn_RetVals: RetVals_base
+	{ // no other params necessary for now - this is for passing the err str back
+	};
+	typedef std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t, get_random_outs_fn_RetVals &)> get_random_outs_fn_type; // this function MUST be synchronous; it must also initialize a get_random_outs_fn_RetVals (e.g. 'retVals = {};')
+	//
 	struct CreateSignedTxs_Args
 	{
 		CreateSignedTxs_Args() = delete; // disallow `Args foo;` default constructor
@@ -75,7 +81,7 @@ namespace monero_transfer_utils
 		const wallet2::transfer_container &transfers;
 		std::unordered_map<crypto::hash, tools::wallet2::unconfirmed_transfer_details> unconfirmed_txs;
 		//
-		std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t)> get_random_outs_fn; // this function MUST be synchronous - a std::promise may be used 
+		monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn; // this function MUST be synchronous - a std::promise may be used
 		//
 		const uint64_t per_kb_fee;
 		uint64_t blockchain_size;
@@ -96,14 +102,11 @@ namespace monero_transfer_utils
 		bool is_trusted_daemon;
 		bool is_wallet_multisig;
 	};
-	struct CreateSignedTxs_RetVals // TODO: derive from base RetVals for did_error, err_string, etc
+	struct CreateSignedTxs_RetVals: RetVals_base
 	{
-		bool did_error;
-		boost::optional<std::string> err_string; // this is boost::none when did_error!=true
-		//
 		boost::optional<tools::wallet2::signed_tx_set> signed_tx_set;
 	};
-	bool create_signed_transaction( // returns !didError
+	bool create_signed_transaction( // returns !did_error
 		const CreateSignedTxs_Args &args,
 		CreateSignedTxs_RetVals &retVals // initializes a retVals for you
 	);
@@ -111,14 +114,11 @@ namespace monero_transfer_utils
 	//
 	// Shared - create_transactions_*
 	//
-	struct CreatePendingTx_RetVals // TODO: derive from base RetVals for did_error, err_string, etc
+	struct CreatePendingTx_RetVals: RetVals_base
 	{
-		bool did_error;
-		boost::optional<std::string> err_string; // this is boost::none when did_error!=true
-		//
 		boost::optional<std::vector<tools::wallet2::pending_tx>> pending_txs;
 	};
-	bool create_transactions_3(
+	bool create_pending_transactions_3( // aka create_transactions_3, from create_transactions_2
 		const cryptonote::account_keys &account_keys,
 		const std::vector<wallet2::transfer_details> &transfers,
 		std::unordered_map<crypto::hash, tools::wallet2::unconfirmed_transfer_details> unconfirmed_txs,
@@ -148,7 +148,7 @@ namespace monero_transfer_utils
 		bool is_testnet,
 		bool is_wallet_multisig,
 		//
-		std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t)> get_random_outs_fn, // this function MUST be synchronous
+		monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
 		//
 		CreatePendingTx_RetVals &retVals // initializes a retVals for you
 	);	
@@ -178,7 +178,8 @@ namespace monero_transfer_utils
 		cryptonote::transaction& tx,
 		tools::wallet2::pending_tx &ptx,
 		//
-		std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t)> get_random_outs_fn // this function MUST be synchronous
+		monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
+		tools::RetVals_base &retVals
 	);
 	void transfer_selected_rct(
 		const wallet2::transfer_container &transfers,
@@ -201,7 +202,8 @@ namespace monero_transfer_utils
 		tools::wallet2::pending_tx &ptx,
 		bool bulletproof,
 		//
-		std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t)> get_random_outs_fn // this function MUST be synchronous
+		monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
+		tools::RetVals_base &retVals
 	);
 	//
 	uint64_t num_rct_outputs(); // TODO: migrate to standard function

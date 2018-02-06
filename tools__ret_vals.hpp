@@ -1,8 +1,8 @@
 //
-//  monero_key_image_utils.hpp
+//  tools__ret_vals.hpp
 //  MyMonero
 //
-//  Created by Paul Shapiro on 1/2/18.
+//  Created by Paul Shapiro on 2/6/18.
 //  Copyright (c) 2014-2018, MyMonero.com
 //
 //  All rights reserved.
@@ -31,31 +31,21 @@
 //  STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
+#ifndef tools__ret_vals_hpp
+#define tools__ret_vals_hpp
 //
-#ifndef monero_key_image_utils_hpp
-#define monero_key_image_utils_hpp
+#include "include_base_utils.h"
+#include <boost/optional.hpp>
 //
-#include "crypto.h"
-#include "cryptonote_basic.h"
-#include "account.h"
-//
-using namespace tools;
-#include "tools__ret_vals.hpp"
-//
-namespace monero_key_image_utils
+namespace tools
 {
-	struct KeyImageRetVals: RetVals_base
+	struct RetVals_base
 	{
-		crypto::key_image calculated_key_image;
+		bool did_error = false;
+		boost::optional<std::string> err_string = boost::none;
+		//
+		// derive *_RetVals structs from this type and add your own members
 	};
-	bool new__key_image(
-		const crypto::public_key& account_pub_spend_key,
-		const crypto::secret_key& account_sec_spend_key,
-		const crypto::secret_key& account_sec_view_key,
-		const crypto::public_key& tx_public_key,
-		uint64_t out_index,
-		KeyImageRetVals &KeyImageRetVals
-	);
 }
-//
-#endif /* monero_key_image_utils_hpp */
+	
+#endif /* tools__ret_vals_hpp */

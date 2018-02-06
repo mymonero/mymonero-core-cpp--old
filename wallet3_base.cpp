@@ -401,7 +401,7 @@ namespace tools
 		uint32_t simple_priority,
 		std::set<uint32_t> subaddr_indices,
 		uint32_t current_subaddress_account_idx,
-		std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t)> get_random_outs_fn,
+		monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn,
 		//
 		monero_transfer_utils::CreateSignedTxs_RetVals &retVals
 	) const {

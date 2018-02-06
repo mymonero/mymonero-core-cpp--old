@@ -82,7 +82,7 @@ bool monero_wallet_utils::new_wallet(
 	// ^-- it's OK to directly call ElectrumWords w/ crypto::secret_key as we are generating new wallet, not reading
 	if (!r) {
 		retVals.did_error = true;
-		retVals.optl__err_string = "Unable to create new wallet";
+		retVals.err_string = "Unable to create new wallet";
 		// TODO: return code of unable to convert seed to mnemonic
 		//
 		return false;
@@ -114,7 +114,7 @@ bool monero_wallet_utils::decoded_seed(
 	std::string mnemonic_string = mnemonic_string_ref; // copy for to_lower… TODO: any better way?
 	if (mnemonic_string.empty()) {
 		retVals.did_error = true;
-		retVals.optl__err_string = "Please enter a valid seed";
+		retVals.err_string = "Please enter a valid seed";
 		//
 		return false;
 	}
@@ -136,7 +136,7 @@ bool monero_wallet_utils::decoded_seed(
 		bool r = crypto::ElectrumWords::words_to_bytes(mnemonic_string, sec_seed, mnemonic_language);
 		if (!r) {
 			retVals.did_error = true;
-			retVals.optl__err_string = "Invalid 25-word mnemonic";
+			retVals.err_string = "Invalid 25-word mnemonic";
 			//
 			return false;
 		}
@@ -147,7 +147,7 @@ bool monero_wallet_utils::decoded_seed(
 		bool r = crypto::ElectrumWords::words_to_bytes(mnemonic_string, legacy16B_sec_seed, mnemonic_language); // special 16 byte function
 		if (!r) {
 			retVals.did_error = true;
-			retVals.optl__err_string = "Invalid 13-word mnemonic";
+			retVals.err_string = "Invalid 13-word mnemonic";
 			//
 			return false;
 		}
@@ -155,7 +155,7 @@ bool monero_wallet_utils::decoded_seed(
 		sec_seed_string = string_tools::pod_to_hex(legacy16B_sec_seed); // <- NOTE: we are returning the _LEGACY_ seed as the string… this is important so we don't lose the fact it was 16B/13-word originally!
 	} else {
 		retVals.did_error = true;
-		retVals.optl__err_string = "Please enter a 25- or 13-word secret mnemonic.";
+		retVals.err_string = "Please enter a 25- or 13-word secret mnemonic.";
 		//
 		return false;
 	}
@@ -179,7 +179,7 @@ bool monero_wallet_utils::wallet_with(
 	bool r = decoded_seed(mnemonic_string_ref, mnemonic_language__ref, decodedSeed_retVals);
 	if (!r) {
 		retVals.did_error = true;
-		retVals.optl__err_string = *decodedSeed_retVals.optl__err_string; // TODO: assert?
+		retVals.err_string = *decodedSeed_retVals.err_string; // TODO: assert?
 		return false;
 	}
 	cryptonote::account_base account{}; // this initializes the wallet and should call the default constructor
@@ -207,8 +207,8 @@ bool monero_wallet_utils::wallet_with(
 }
 
 bool monero_wallet_utils::validate_wallet_components_with(
-	const monero_wallet_utils::WalletComponentsToValidate &inputs,
-	monero_wallet_utils::WalletComponentsValidationResults &outputs
+	const WalletComponentsToValidate &inputs,
+	WalletComponentsValidationResults &outputs
 )
 { // TODO: how can the err_strings be prepared for localization?
 	outputs = {};

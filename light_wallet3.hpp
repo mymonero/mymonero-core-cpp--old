@@ -35,8 +35,12 @@
 
 #include "wallet3_base.hpp"
 #include "wallet2_transfer_utils.h" // for types
+#include "monero_transfer_utils.hpp"
 #include "light_wallet3_server_api.h"
-
+//
+#include "tools__ret_vals.hpp"
+using namespace tools;
+//
 namespace tools
 {
 	// Sends view key to light wallet server (which connects to a daemon) for scanning
@@ -51,11 +55,8 @@ namespace tools
 			uint32_t m_mixin;
 			std::string m_payment_id_string; // may be .empty()
 		};
-		struct get_rand_outs_promise_ret_vals
+		struct get_rand_outs_promise_ret_vals: RetVals_base
 		{
-			bool did_error;
-			boost::optional<std::string> err_string;
-			//
 			boost::optional<std::string> response_json_string;
 		};
 		//
@@ -67,7 +68,7 @@ namespace tools
 		// the following 'ingest__' methods assume successful responses
 		void ingest__get_address_txs(const light_wallet3_server_api::COMMAND_RPC_GET_ADDRESS_TXS::response &ires);
 		void ingest__get_unspent_outs(const light_wallet3_server_api::COMMAND_RPC_GET_UNSPENT_OUTS::response &ores, size_t light_wallet_requested_outputs_count);
-		bool populate_from__get_random_outs(const light_wallet3_server_api::COMMAND_RPC_GET_RANDOM_OUTS::response &ores, std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs, const std::vector<size_t> &selected_transfers, size_t fake_outputs_count, size_t requested_outputs_count) const;  // this would have been called ingest__ but it modifies no instance state
+		bool populate_from__get_random_outs(const light_wallet3_server_api::COMMAND_RPC_GET_RANDOM_OUTS::response &ores, std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs, const std::vector<size_t> &selected_transfers, size_t fake_outputs_count, size_t requested_outputs_count, tools::RetVals_base &retVals) const;  // this would have been called ingest__ but it modifies no instance state
 		//
 		// Accessors - Overrides
 		uint64_t balance(uint32_t index_major) const; 
@@ -93,7 +94,7 @@ namespace tools
 			const std::string &amount_float_string,
 			const std::string *optl__payment_id_string,
 			uint32_t simple_priority,
-			std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t)> get_random_outs_fn, // this function MUST be synchronous
+			monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
 			//
 			monero_transfer_utils::CreateSignedTxs_RetVals &retVals
 		) const;
