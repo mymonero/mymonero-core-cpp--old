@@ -425,9 +425,10 @@ bool monero_transfer_utils::create_transactions_3(
 	
 	LOG_PRINT_L2("Starting with " << num_nondust_outputs << " non-dust outputs and " << num_dust_outputs << " dust outputs");
 	
-	if (unused_dust_indices_per_subaddr.empty() && unused_transfers_indices_per_subaddr.empty())
+	if (unused_dust_indices_per_subaddr.empty() && unused_transfers_indices_per_subaddr.empty()) {
 		retVals.pending_txs = std::vector<wallet2::pending_tx>();
 		return true;
+	}
 	
 	// if empty, put dummy entry so that the front can be referenced later in the loop
 	if (unused_dust_indices_per_subaddr.empty())

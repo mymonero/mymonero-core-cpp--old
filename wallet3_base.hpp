@@ -175,8 +175,9 @@ namespace tools
 			std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t)> get_random_outs_fn, // this function MUST be synchronous
 			//
 			monero_transfer_utils::CreateSignedTxs_RetVals &retVals
-		); // have your concrete subclass call this with special parameters
-		//
+		) const; // have your concrete subclass call this with special parameters
+    	bool tx_add_fake_output(std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs, uint64_t global_index, const crypto::public_key& tx_public_key, const rct::key& mask, uint64_t real_index, bool unlocked) const;
+
 	protected: // formerly private; changed to enable subclassing
 		
 		bool clear();

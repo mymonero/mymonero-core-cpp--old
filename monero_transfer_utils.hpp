@@ -75,7 +75,7 @@ namespace monero_transfer_utils
 		const wallet2::transfer_container &transfers;
 		std::unordered_map<crypto::hash, tools::wallet2::unconfirmed_transfer_details> unconfirmed_txs;
 		//
-		std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t)> get_random_outs_fn; // this function MUST be synchronous
+		std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t)> get_random_outs_fn; // this function MUST be synchronous - a std::promise may be used 
 		//
 		const uint64_t per_kb_fee;
 		uint64_t blockchain_size;

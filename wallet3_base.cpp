@@ -404,7 +404,7 @@ namespace tools
 		std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t)> get_random_outs_fn,
 		//
 		monero_transfer_utils::CreateSignedTxs_RetVals &retVals
-	) {
+	) const {
 		CreateSignedTxs_Args args =
 		{
 			m_account.get_keys(),
@@ -451,6 +451,25 @@ namespace tools
 			return false; // retVals already populated with err values
 		}
 		THROW_WALLET_EXCEPTION_IF(!r, error::wallet_internal_error, "Unexpected !did_succeed=false without an error");
+		return true;
+	}
+	bool wallet3_base::tx_add_fake_output(
+		std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs,
+		uint64_t global_index,
+		const crypto::public_key& tx_public_key,
+		const rct::key& mask,
+		uint64_t real_index,
+		bool unlocked
+	) const {
+		if (!unlocked) // don't add locked outs
+			return false;
+		if (global_index == real_index) // don't re-add real one
+			return false;
+		auto item = std::make_tuple(global_index, tx_public_key, mask);
+		CHECK_AND_ASSERT_MES(!outs.empty(), false, "internal error: outs is empty");
+		if (std::find(outs.back().begin(), outs.back().end(), item) != outs.back().end()) // don't add duplicates
+			return false;
+		outs.back().push_back(item);
 		return true;
 	}
 }

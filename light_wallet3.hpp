@@ -51,6 +51,13 @@ namespace tools
 			uint32_t m_mixin;
 			std::string m_payment_id_string; // may be .empty()
 		};
+		struct get_rand_outs_promise_ret_vals
+		{
+			bool did_error;
+			boost::optional<std::string> err_string;
+			//
+			boost::optional<std::string> response_json_string;
+		};
 		//
 		//
 		light_wallet3(bool testnet = false, bool restricted = false);
@@ -60,7 +67,7 @@ namespace tools
 		// the following 'ingest__' methods assume successful responses
 		void ingest__get_address_txs(const light_wallet3_server_api::COMMAND_RPC_GET_ADDRESS_TXS::response &ires);
 		void ingest__get_unspent_outs(const light_wallet3_server_api::COMMAND_RPC_GET_UNSPENT_OUTS::response &ores, size_t light_wallet_requested_outputs_count);
-		void ingest__get_random_outs(const light_wallet3_server_api::COMMAND_RPC_GET_RANDOM_OUTS::response &ores);
+		bool populate_from__get_random_outs(const light_wallet3_server_api::COMMAND_RPC_GET_RANDOM_OUTS::response &ores, std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs, const std::vector<size_t> &selected_transfers, size_t fake_outputs_count, size_t requested_outputs_count) const;  // this would have been called ingest__ but it modifies no instance state
 		//
 		// Accessors - Overrides
 		uint64_t balance(uint32_t index_major) const; 
@@ -89,7 +96,12 @@ namespace tools
 			std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t)> get_random_outs_fn, // this function MUST be synchronous
 			//
 			monero_transfer_utils::CreateSignedTxs_RetVals &retVals
-		);
+		) const;
+		void populate_amount_strings_for_get_random_outs(
+			const std::vector<size_t> &selected_transfers, // select from
+			std::vector<std::string> &amounts // to fill
+		) const;
+		uint32_t requested_outputs_count(size_t fake_outputs_count) const;
 		//
 	protected:
 		bool m_light_wallet_connected;
@@ -112,8 +124,7 @@ namespace tools
 		// store calculated key image for faster lookup
 		std::unordered_map<crypto::public_key, std::map<uint64_t, crypto::key_image> > m_key_image_cache;
 		//
-		// Functions - Accessors
-		bool is_own_key_image(const crypto::key_image& key_image, const crypto::public_key& tx_public_key, uint64_t out_index);
+		bool is_own_key_image(const crypto::key_image& key_image, const crypto::public_key& tx_public_key, uint64_t out_index); // not declared as const b/c it mutates m_key_image_cache
 		bool parse_rct_str(const std::string& rct_string, const crypto::public_key& tx_pub_key, uint64_t internal_output_index, rct::key& decrypted_mask, rct::key& rct_commit, bool decrypt) const;
 		//
 	};
