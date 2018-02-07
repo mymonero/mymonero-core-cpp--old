@@ -21,6 +21,7 @@
 #include "wallet_errors.h"
 //
 using namespace std;
+using namespace crypto;
 using namespace epee;
 using namespace cryptonote;
 using namespace tools; // for error::
@@ -239,9 +240,13 @@ bool monero_transfer_utils::create_signed_transaction(
 	}
 	// TODO: detect and prompt user for multiple tx transfer
 	// TODO: commit / sign and return transaction
+	// if multisig…
+	// otherwise…
+	
 	//
 	return true;
 }
+//
 bool monero_transfer_utils::create_pending_transactions_3(
 	const cryptonote::account_keys &account_keys,
 	const std::vector<wallet2::transfer_details> &transfers,
@@ -1791,4 +1796,70 @@ crypto::public_key monero_transfer_utils::get_subaddress_spend_public_key(const 
 	crypto::public_key D = rct::rct2pk(D_rct);
 	
 	return D;
+}
+//
+tools::wallet2::tx_construction_data monero_transfer_utils::get_construction_data_with_decrypted_short_payment_id(const tools::wallet2::pending_tx &ptx)
+{
+	tools::wallet2::tx_construction_data construction_data = ptx.construction_data;
+	crypto::hash8 payment_id = get_short_payment_id(ptx);
+	if (payment_id != null_hash8)
+	{
+		// Remove encrypted
+		remove_field_from_tx_extra(construction_data.extra, typeid(cryptonote::tx_extra_nonce));
+		// Add decrypted
+		std::string extra_nonce;
+		set_encrypted_payment_id_to_tx_extra_nonce(extra_nonce, payment_id);
+		THROW_WALLET_EXCEPTION_IF(!add_extra_nonce_to_tx_extra(construction_data.extra, extra_nonce),
+								  tools::error::wallet_internal_error, "Failed to add decrypted payment id to tx extra");
+		LOG_PRINT_L1("Decrypted payment ID: " << payment_id);
+	}
+	return construction_data;
+}
+crypto::hash monero_transfer_utils::get_payment_id(const wallet2::pending_tx &ptx)
+{
+	std::vector<tx_extra_field> tx_extra_fields;
+	parse_tx_extra(ptx.tx.extra, tx_extra_fields); // ok if partially parsed
+	tx_extra_nonce extra_nonce;
+	crypto::hash payment_id = null_hash;
+	if (find_tx_extra_field_by_type(tx_extra_fields, extra_nonce))
+	{
+		crypto::hash8 payment_id8 = null_hash8;
+		if(get_encrypted_payment_id_from_tx_extra_nonce(extra_nonce.nonce, payment_id8))
+		{
+			if (ptx.dests.empty())
+			{
+				MWARNING("Encrypted payment id found, but no destinations public key, cannot decrypt");
+				return crypto::null_hash;
+			}
+			if (decrypt_payment_id(payment_id8, ptx.dests[0].addr.m_view_public_key, ptx.tx_key))
+			{
+				memcpy(payment_id.data, payment_id8.data, 8);
+			}
+		}
+		else if (!get_payment_id_from_tx_extra_nonce(extra_nonce.nonce, payment_id))
+		{
+			payment_id = crypto::null_hash;
+		}
+	}
+	return payment_id;
+}
+crypto::hash8 monero_transfer_utils::get_short_payment_id(const tools::wallet2::pending_tx &ptx)
+{
+	crypto::hash8 payment_id8 = null_hash8;
+	std::vector<tx_extra_field> tx_extra_fields;
+	parse_tx_extra(ptx.tx.extra, tx_extra_fields); // ok if partially parsed
+	cryptonote::tx_extra_nonce extra_nonce;
+	if (find_tx_extra_field_by_type(tx_extra_fields, extra_nonce))
+	{
+		if(get_encrypted_payment_id_from_tx_extra_nonce(extra_nonce.nonce, payment_id8))
+		{
+			if (ptx.dests.empty())
+			{
+				MWARNING("Encrypted payment id found, but no destinations public key, cannot decrypt");
+				return crypto::null_hash8;
+			}
+			decrypt_payment_id(payment_id8, ptx.dests[0].addr.m_view_public_key, ptx.tx_key);
+		}
+	}
+	return payment_id8;
 }

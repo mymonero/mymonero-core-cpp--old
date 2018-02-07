@@ -106,7 +106,8 @@ namespace monero_transfer_utils
 	{
 		boost::optional<tools::wallet2::signed_tx_set> signed_tx_set;
 	};
-	bool create_signed_transaction( // returns !did_error
+	bool create_signed_transaction( // derived from simplewallet::transfer_main()
+	// returns !did_error
 		const CreateSignedTxs_Args &args,
 		CreateSignedTxs_RetVals &retVals // initializes a retVals for you
 	);
@@ -245,7 +246,6 @@ namespace monero_transfer_utils
 		bool is_testnet
 	);
 	//
-	//
 	uint32_t fixed_ringsize(); // not mixinsize, which would be ringsize-1
 	uint32_t fixed_mixinsize(); // not ringsize, which would be mixinsize+1
 	//
@@ -261,6 +261,10 @@ namespace monero_transfer_utils
 	
 	cryptonote::account_public_address get_subaddress(const cryptonote::subaddress_index& index, const cryptonote::account_keys& keys);
 	crypto::public_key get_subaddress_spend_public_key(const cryptonote::subaddress_index& index, const cryptonote::account_keys& keys);
+	//
+	tools::wallet2::tx_construction_data get_construction_data_with_decrypted_short_payment_id(const tools::wallet2::pending_tx &ptx);
+	crypto::hash get_payment_id(const tools::wallet2::pending_tx &ptx);
+	crypto::hash8 get_short_payment_id(const tools::wallet2::pending_tx &ptx);
 }
 	
 #endif /* monero_transfer_utils_hpp */

@@ -37,9 +37,9 @@
 
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/variables_map.hpp>
-//#include <boost/serialization/list.hpp>
-//#include <boost/serialization/vector.hpp>
-//#include <boost/serialization/deque.hpp>
+#include <boost/serialization/list.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/deque.hpp>
 #include <atomic>
 
 #include "include_base_utils.h"
@@ -178,7 +178,8 @@ namespace tools
 		) const; // have your concrete subclass call this with special parameters
 		//
     	bool tx_add_fake_output(std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs, uint64_t global_index, const crypto::public_key& tx_public_key, const rct::key& mask, uint64_t real_index, bool unlocked) const;
-
+		//
+		//
 	protected: // formerly private; changed to enable subclassing
 		
 		bool clear();
@@ -196,7 +197,7 @@ namespace tools
 		std::unordered_multimap<crypto::hash, wallet2::pool_payment_details> m_unconfirmed_payments;
 		std::unordered_map<crypto::hash, crypto::secret_key> m_tx_keys;
 	//		cryptonote::checkpoints m_checkpoints;
-	//		std::unordered_map<crypto::hash, std::vector<crypto::secret_key>> m_additional_tx_keys;
+//		std::unordered_map<crypto::hash, std::vector<crypto::secret_key>> m_additional_tx_keys;
 		
 		wallet2::transfer_container m_transfers;
 		wallet2::payment_container m_payments;
@@ -230,7 +231,7 @@ namespace tools
 		// TODO: these seem like client-lvl parameters/preferences
 	//		bool m_always_confirm_transfers;
 	//		bool m_print_ring_members;
-	//		bool m_store_tx_info; /*!< request txkey to be returned in RPC, and store in the wallet cache file */
+//		bool m_store_tx_info; /*!< request txkey to be returned in RPC, and store in the wallet cache file */
 	//		uint32_t m_default_mixin;
 	//		uint32_t m_default_priority;
 	//		RefreshType m_refresh_type;

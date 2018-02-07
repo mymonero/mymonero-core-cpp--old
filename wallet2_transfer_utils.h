@@ -39,6 +39,8 @@
 #include <boost/serialization/deque.hpp>
 #include <atomic>
 //
+//#include "boost_serialization_helper.h"
+//
 #include "cryptonote_basic_impl.h"
 #include "cryptonote_format_utils.h"
 #include "cryptonote_tx_utils.h"
@@ -317,16 +319,17 @@ namespace tools
 
   };
 }
-BOOST_CLASS_VERSION(tools::wallet2, 22)
+BOOST_CLASS_VERSION(tools::wallet2, 23)
 BOOST_CLASS_VERSION(tools::wallet2::transfer_details, 9)
 BOOST_CLASS_VERSION(tools::wallet2::multisig_info, 1)
 BOOST_CLASS_VERSION(tools::wallet2::multisig_info::LR, 0)
 BOOST_CLASS_VERSION(tools::wallet2::multisig_tx_set, 1)
-BOOST_CLASS_VERSION(tools::wallet2::payment_details, 2)
+BOOST_CLASS_VERSION(tools::wallet2::payment_details, 3)
 BOOST_CLASS_VERSION(tools::wallet2::pool_payment_details, 1)
 BOOST_CLASS_VERSION(tools::wallet2::unconfirmed_transfer_details, 7)
 BOOST_CLASS_VERSION(tools::wallet2::confirmed_transfer_details, 5)
 //BOOST_CLASS_VERSION(tools::wallet2::address_book_row, 17)
+BOOST_CLASS_VERSION(tools::wallet2::reserve_proof_entry, 0)
 BOOST_CLASS_VERSION(tools::wallet2::unsigned_tx_set, 0)
 BOOST_CLASS_VERSION(tools::wallet2::signed_tx_set, 0)
 BOOST_CLASS_VERSION(tools::wallet2::tx_construction_data, 2)
@@ -335,369 +338,386 @@ BOOST_CLASS_VERSION(tools::wallet2::multisig_sig, 0)
 
 //namespace boost
 //{
-//  namespace serialization
-//  {
-//    template <class Archive>
-//    inline typename std::enable_if<!Archive::is_loading::value, void>::type initialize_transfer_details(Archive &a, tools::wallet2::transfer_details &x, const boost::serialization::version_type ver)
-//    {
-//    }
-//    template <class Archive>
-//    inline typename std::enable_if<Archive::is_loading::value, void>::type initialize_transfer_details(Archive &a, tools::wallet2::transfer_details &x, const boost::serialization::version_type ver)
-//    {
-//        if (ver < 1)
-//        {
-//          x.m_mask = rct::identity();
-//          x.m_amount = x.m_tx.vout[x.m_internal_output_index].amount;
-//        }
-//        if (ver < 2)
-//        {
-//          x.m_spent_height = 0;
-//        }
-//        if (ver < 4)
-//        {
-//          x.m_rct = x.m_tx.vout[x.m_internal_output_index].amount == 0;
-//        }
-//        if (ver < 6)
-//        {
-//          x.m_key_image_known = true;
-//        }
-//        if (ver < 7)
-//        {
-//          x.m_pk_index = 0;
-//        }
-//        if (ver < 8)
-//        {
-//          x.m_subaddr_index = {};
-//        }
-//        if (ver < 9)
-//        {
-//          x.m_key_image_partial = false;
-//          x.m_multisig_k.clear();
-//          x.m_multisig_info.clear();
-//        }
-//    }
+//	namespace serialization
+//	{
+//		template <class Archive>
+//		inline typename std::enable_if<!Archive::is_loading::value, void>::type initialize_transfer_details(Archive &a, tools::wallet2::transfer_details &x, const boost::serialization::version_type ver)
+//		{
+//		}
+//		template <class Archive>
+//		inline typename std::enable_if<Archive::is_loading::value, void>::type initialize_transfer_details(Archive &a, tools::wallet2::transfer_details &x, const boost::serialization::version_type ver)
+//		{
+//			if (ver < 1)
+//			{
+//				x.m_mask = rct::identity();
+//				x.m_amount = x.m_tx.vout[x.m_internal_output_index].amount;
+//			}
+//			if (ver < 2)
+//			{
+//				x.m_spent_height = 0;
+//			}
+//			if (ver < 4)
+//			{
+//				x.m_rct = x.m_tx.vout[x.m_internal_output_index].amount == 0;
+//			}
+//			if (ver < 6)
+//			{
+//				x.m_key_image_known = true;
+//			}
+//			if (ver < 7)
+//			{
+//				x.m_pk_index = 0;
+//			}
+//			if (ver < 8)
+//			{
+//				x.m_subaddr_index = {};
+//			}
+//			if (ver < 9)
+//			{
+//				x.m_key_image_partial = false;
+//				x.m_multisig_k.clear();
+//				x.m_multisig_info.clear();
+//			}
+//		}
 //
-//    template <class Archive>
-//    inline void serialize(Archive &a, tools::wallet2::transfer_details &x, const boost::serialization::version_type ver)
-//    {
-//      a & x.m_block_height;
-//      a & x.m_global_output_index;
-//      a & x.m_internal_output_index;
-//      if (ver < 3)
-//      {
-//        cryptonote::transaction tx;
-//        a & tx;
-//        x.m_tx = (const cryptonote::transaction_prefix&)tx;
-//        x.m_txid = cryptonote::get_transaction_hash(tx);
-//      }
-//      else
-//      {
-//        a & x.m_tx;
-//      }
-//      a & x.m_spent;
-//      a & x.m_key_image;
-//      if (ver < 1)
-//      {
-//        // ensure mask and amount are set
-//        initialize_transfer_details(a, x, ver);
-//        return;
-//      }
-//      a & x.m_mask;
-//      a & x.m_amount;
-//      if (ver < 2)
-//      {
-//        initialize_transfer_details(a, x, ver);
-//        return;
-//      }
-//      a & x.m_spent_height;
-//      if (ver < 3)
-//      {
-//        initialize_transfer_details(a, x, ver);
-//        return;
-//      }
-//      a & x.m_txid;
-//      if (ver < 4)
-//      {
-//        initialize_transfer_details(a, x, ver);
-//        return;
-//      }
-//      a & x.m_rct;
-//      if (ver < 5)
-//      {
-//        initialize_transfer_details(a, x, ver);
-//        return;
-//      }
-//      if (ver < 6)
-//      {
-//        // v5 did not properly initialize
-//        uint8_t u;
-//        a & u;
-//        x.m_key_image_known = true;
-//        return;
-//      }
-//      a & x.m_key_image_known;
-//      if (ver < 7)
-//      {
-//        initialize_transfer_details(a, x, ver);
-//        return;
-//      }
-//      a & x.m_pk_index;
-//      if (ver < 8)
-//      {
-//        initialize_transfer_details(a, x, ver);
-//        return;
-//      }
-//      a & x.m_subaddr_index;
-//      if (ver < 9)
-//      {
-//        initialize_transfer_details(a, x, ver);
-//        return;
-//      }
-//      a & x.m_multisig_info;
-//      a & x.m_multisig_k;
-//      a & x.m_key_image_partial;
-//    }
+//		template <class Archive>
+//		inline void serialize(Archive &a, tools::wallet2::transfer_details &x, const boost::serialization::version_type ver)
+//		{
+//			a & x.m_block_height;
+//			a & x.m_global_output_index;
+//			a & x.m_internal_output_index;
+//			if (ver < 3)
+//			{
+//				cryptonote::transaction tx;
+//				a & tx;
+//				x.m_tx = (const cryptonote::transaction_prefix&)tx;
+//				x.m_txid = cryptonote::get_transaction_hash(tx);
+//			}
+//			else
+//			{
+//				a & x.m_tx;
+//			}
+//			a & x.m_spent;
+//			a & x.m_key_image;
+//			if (ver < 1)
+//			{
+//				// ensure mask and amount are set
+//				initialize_transfer_details(a, x, ver);
+//				return;
+//			}
+//			a & x.m_mask;
+//			a & x.m_amount;
+//			if (ver < 2)
+//			{
+//				initialize_transfer_details(a, x, ver);
+//				return;
+//			}
+//			a & x.m_spent_height;
+//			if (ver < 3)
+//			{
+//				initialize_transfer_details(a, x, ver);
+//				return;
+//			}
+//			a & x.m_txid;
+//			if (ver < 4)
+//			{
+//				initialize_transfer_details(a, x, ver);
+//				return;
+//			}
+//			a & x.m_rct;
+//			if (ver < 5)
+//			{
+//				initialize_transfer_details(a, x, ver);
+//				return;
+//			}
+//			if (ver < 6)
+//			{
+//				// v5 did not properly initialize
+//				uint8_t u;
+//				a & u;
+//				x.m_key_image_known = true;
+//				return;
+//			}
+//			a & x.m_key_image_known;
+//			if (ver < 7)
+//			{
+//				initialize_transfer_details(a, x, ver);
+//				return;
+//			}
+//			a & x.m_pk_index;
+//			if (ver < 8)
+//			{
+//				initialize_transfer_details(a, x, ver);
+//				return;
+//			}
+//			a & x.m_subaddr_index;
+//			if (ver < 9)
+//			{
+//				initialize_transfer_details(a, x, ver);
+//				return;
+//			}
+//			a & x.m_multisig_info;
+//			a & x.m_multisig_k;
+//			a & x.m_key_image_partial;
+//		}
 //
-//    template <class Archive>
-//    inline void serialize(Archive &a, tools::wallet2::multisig_info::LR &x, const boost::serialization::version_type ver)
-//    {
-//      a & x.m_L;
-//      a & x.m_R;
-//    }
+//		template <class Archive>
+//		inline void serialize(Archive &a, tools::wallet2::multisig_info::LR &x, const boost::serialization::version_type ver)
+//		{
+//			a & x.m_L;
+//			a & x.m_R;
+//		}
 //
-//    template <class Archive>
-//    inline void serialize(Archive &a, tools::wallet2::multisig_info &x, const boost::serialization::version_type ver)
-//    {
-//      a & x.m_signer;
-//      a & x.m_LR;
-//      a & x.m_partial_key_images;
-//    }
+//		template <class Archive>
+//		inline void serialize(Archive &a, tools::wallet2::multisig_info &x, const boost::serialization::version_type ver)
+//		{
+//			a & x.m_signer;
+//			a & x.m_LR;
+//			a & x.m_partial_key_images;
+//		}
 //
-//    template <class Archive>
-//    inline void serialize(Archive &a, tools::wallet2::multisig_tx_set &x, const boost::serialization::version_type ver)
-//    {
-//      a & x.m_ptx;
-//      a & x.m_signers;
-//    }
+//		template <class Archive>
+//		inline void serialize(Archive &a, tools::wallet2::multisig_tx_set &x, const boost::serialization::version_type ver)
+//		{
+//			a & x.m_ptx;
+//			a & x.m_signers;
+//		}
 //
-//    template <class Archive>
-//    inline void serialize(Archive &a, tools::wallet2::unconfirmed_transfer_details &x, const boost::serialization::version_type ver)
-//    {
-//      a & x.m_change;
-//      a & x.m_sent_time;
-//      if (ver < 5)
-//      {
-//        cryptonote::transaction tx;
-//        a & tx;
-//        x.m_tx = (const cryptonote::transaction_prefix&)tx;
-//      }
-//      else
-//      {
-//        a & x.m_tx;
-//      }
-//      if (ver < 1)
-//        return;
-//      a & x.m_dests;
-//      a & x.m_payment_id;
-//      if (ver < 2)
-//        return;
-//      a & x.m_state;
-//      if (ver < 3)
-//        return;
-//      a & x.m_timestamp;
-//      if (ver < 4)
-//        return;
-//      a & x.m_amount_in;
-//      a & x.m_amount_out;
-//      if (ver < 6)
-//      {
-//        // v<6 may not have change accumulated in m_amount_out, which is a pain,
-//        // as it's readily understood to be sum of outputs.
-//        // We convert it to include change from v6
-//        if (!typename Archive::is_saving() && x.m_change != (uint64_t)-1)
-//          x.m_amount_out += x.m_change;
-//      }
-//      if (ver < 7)
-//      {
-//        x.m_subaddr_account = 0;
-//        return;
-//      }
-//      a & x.m_subaddr_account;
-//      a & x.m_subaddr_indices;
-//    }
+//		template <class Archive>
+//		inline void serialize(Archive &a, tools::wallet2::unconfirmed_transfer_details &x, const boost::serialization::version_type ver)
+//		{
+//			a & x.m_change;
+//			a & x.m_sent_time;
+//			if (ver < 5)
+//			{
+//				cryptonote::transaction tx;
+//				a & tx;
+//				x.m_tx = (const cryptonote::transaction_prefix&)tx;
+//			}
+//			else
+//			{
+//				a & x.m_tx;
+//			}
+//			if (ver < 1)
+//				return;
+//			a & x.m_dests;
+//			a & x.m_payment_id;
+//			if (ver < 2)
+//				return;
+//			a & x.m_state;
+//			if (ver < 3)
+//				return;
+//			a & x.m_timestamp;
+//			if (ver < 4)
+//				return;
+//			a & x.m_amount_in;
+//			a & x.m_amount_out;
+//			if (ver < 6)
+//			{
+//				// v<6 may not have change accumulated in m_amount_out, which is a pain,
+//				// as it's readily understood to be sum of outputs.
+//				// We convert it to include change from v6
+//				if (!typename Archive::is_saving() && x.m_change != (uint64_t)-1)
+//					x.m_amount_out += x.m_change;
+//			}
+//			if (ver < 7)
+//			{
+//				x.m_subaddr_account = 0;
+//				return;
+//			}
+//			a & x.m_subaddr_account;
+//			a & x.m_subaddr_indices;
+//		}
 //
-//    template <class Archive>
-//    inline void serialize(Archive &a, tools::wallet2::confirmed_transfer_details &x, const boost::serialization::version_type ver)
-//    {
-//      a & x.m_amount_in;
-//      a & x.m_amount_out;
-//      a & x.m_change;
-//      a & x.m_block_height;
-//      if (ver < 1)
-//        return;
-//      a & x.m_dests;
-//      a & x.m_payment_id;
-//      if (ver < 2)
-//        return;
-//      a & x.m_timestamp;
-//      if (ver < 3)
-//      {
-//        // v<3 may not have change accumulated in m_amount_out, which is a pain,
-//        // as it's readily understood to be sum of outputs. Whether it got added
-//        // or not depends on whether it came from a unconfirmed_transfer_details
-//        // (not included) or not (included). We can't reliably tell here, so we
-//        // check whether either yields a "negative" fee, or use the other if so.
-//        // We convert it to include change from v3
-//        if (!typename Archive::is_saving() && x.m_change != (uint64_t)-1)
-//        {
-//          if (x.m_amount_in > (x.m_amount_out + x.m_change))
-//            x.m_amount_out += x.m_change;
-//        }
-//      }
-//      if (ver < 4)
-//      {
-//        if (!typename Archive::is_saving())
-//          x.m_unlock_time = 0;
-//        return;
-//      }
-//      a & x.m_unlock_time;
-//      if (ver < 5)
-//      {
-//        x.m_subaddr_account = 0;
-//        return;
-//      }
-//      a & x.m_subaddr_account;
-//      a & x.m_subaddr_indices;
-//    }
+//		template <class Archive>
+//		inline void serialize(Archive &a, tools::wallet2::confirmed_transfer_details &x, const boost::serialization::version_type ver)
+//		{
+//			a & x.m_amount_in;
+//			a & x.m_amount_out;
+//			a & x.m_change;
+//			a & x.m_block_height;
+//			if (ver < 1)
+//				return;
+//			a & x.m_dests;
+//			a & x.m_payment_id;
+//			if (ver < 2)
+//				return;
+//			a & x.m_timestamp;
+//			if (ver < 3)
+//			{
+//				// v<3 may not have change accumulated in m_amount_out, which is a pain,
+//				// as it's readily understood to be sum of outputs. Whether it got added
+//				// or not depends on whether it came from a unconfirmed_transfer_details
+//				// (not included) or not (included). We can't reliably tell here, so we
+//				// check whether either yields a "negative" fee, or use the other if so.
+//				// We convert it to include change from v3
+//				if (!typename Archive::is_saving() && x.m_change != (uint64_t)-1)
+//				{
+//					if (x.m_amount_in > (x.m_amount_out + x.m_change))
+//						x.m_amount_out += x.m_change;
+//				}
+//			}
+//			if (ver < 4)
+//			{
+//				if (!typename Archive::is_saving())
+//					x.m_unlock_time = 0;
+//				return;
+//			}
+//			a & x.m_unlock_time;
+//			if (ver < 5)
+//			{
+//				x.m_subaddr_account = 0;
+//				return;
+//			}
+//			a & x.m_subaddr_account;
+//			a & x.m_subaddr_indices;
+//		}
 //
-//    template <class Archive>
-//    inline void serialize(Archive& a, tools::wallet2::payment_details& x, const boost::serialization::version_type ver)
-//    {
-//      a & x.m_tx_hash;
-//      a & x.m_amount;
-//      a & x.m_block_height;
-//      a & x.m_unlock_time;
-//      if (ver < 1)
-//        return;
-//      a & x.m_timestamp;
-//      if (ver < 2)
-//      {
-//        x.m_subaddr_index = {};
-//        return;
-//      }
-//      a & x.m_subaddr_index;
-//    }
+//		template <class Archive>
+//		inline void serialize(Archive& a, tools::wallet2::payment_details& x, const boost::serialization::version_type ver)
+//		{
+//			a & x.m_tx_hash;
+//			a & x.m_amount;
+//			a & x.m_block_height;
+//			a & x.m_unlock_time;
+//			if (ver < 1)
+//				return;
+//			a & x.m_timestamp;
+//			if (ver < 2)
+//			{
+//				x.m_subaddr_index = {};
+//				return;
+//			}
+//			a & x.m_subaddr_index;
+//			if (ver < 3)
+//			{
+//				x.m_fee = 0;
+//				return;
+//			}
+//			a & x.m_fee;
+//		}
 //
-//    template <class Archive>
-//    inline void serialize(Archive& a, tools::wallet2::pool_payment_details& x, const boost::serialization::version_type ver)
-//    {
-//      a & x.m_pd;
-//      a & x.m_double_spend_seen;
-//    }
+//		template <class Archive>
+//		inline void serialize(Archive& a, tools::wallet2::pool_payment_details& x, const boost::serialization::version_type ver)
+//		{
+//			a & x.m_pd;
+//			a & x.m_double_spend_seen;
+//		}
 //
-//    template <class Archive>
-//    inline void serialize(Archive& a, tools::wallet2::address_book_row& x, const boost::serialization::version_type ver)
-//    {
-//      a & x.m_address;
-//      a & x.m_payment_id;
-//      a & x.m_description;
-//      if (ver < 17)
-//      {
-//        x.m_is_subaddress = false;
-//        return;
-//      }
-//      a & x.m_is_subaddress;
-//    }
+//		template <class Archive>
+//		inline void serialize(Archive& a, tools::wallet2::address_book_row& x, const boost::serialization::version_type ver)
+//		{
+//			a & x.m_address;
+//			a & x.m_payment_id;
+//			a & x.m_description;
+//			if (ver < 17)
+//			{
+//				x.m_is_subaddress = false;
+//				return;
+//			}
+//			a & x.m_is_subaddress;
+//		}
 //
-//    template <class Archive>
-//    inline void serialize(Archive &a, tools::wallet2::unsigned_tx_set &x, const boost::serialization::version_type ver)
-//    {
-//      a & x.txes;
-//      a & x.transfers;
-//    }
+//		template <class Archive>
+//		inline void serialize(Archive& a, tools::wallet2::reserve_proof_entry& x, const boost::serialization::version_type ver)
+//		{
+//			a & x.txid;
+//			a & x.index_in_tx;
+//			a & x.shared_secret;
+//			a & x.key_image;
+//			a & x.shared_secret_sig;
+//			a & x.key_image_sig;
+//		}
 //
-//    template <class Archive>
-//    inline void serialize(Archive &a, tools::wallet2::signed_tx_set &x, const boost::serialization::version_type ver)
-//    {
-//      a & x.ptx;
-//      a & x.key_images;
-//    }
+//		template <class Archive>
+//		inline void serialize(Archive &a, tools::wallet2::unsigned_tx_set &x, const boost::serialization::version_type ver)
+//		{
+//			a & x.txes;
+//			a & x.transfers;
+//		}
 //
-//    template <class Archive>
-//    inline void serialize(Archive &a, tools::wallet2::tx_construction_data &x, const boost::serialization::version_type ver)
-//    {
-//      a & x.sources;
-//      a & x.change_dts;
-//      a & x.splitted_dsts;
-//      if (ver < 2)
-//      {
-//        // load list to vector
-//        std::list<size_t> selected_transfers;
-//        a & selected_transfers;
-//        x.selected_transfers.clear();
-//        x.selected_transfers.reserve(selected_transfers.size());
-//        for (size_t t: selected_transfers)
-//          x.selected_transfers.push_back(t);
-//      }
-//      a & x.extra;
-//      a & x.unlock_time;
-//      a & x.use_rct;
-//      a & x.dests;
-//      if (ver < 1)
-//      {
-//        x.subaddr_account = 0;
-//        return;
-//      }
-//      a & x.subaddr_account;
-//      a & x.subaddr_indices;
-//      if (ver < 2)
-//        return;
-//      a & x.selected_transfers;
-//    }
+//		template <class Archive>
+//		inline void serialize(Archive &a, tools::wallet2::signed_tx_set &x, const boost::serialization::version_type ver)
+//		{
+//			a & x.ptx;
+//			a & x.key_images;
+//		}
 //
-//    template <class Archive>
-//    inline void serialize(Archive &a, tools::wallet2::multisig_sig &x, const boost::serialization::version_type ver)
-//    {
-//      a & x.sigs;
-//      a & x.ignore;
-//      a & x.used_L;
-//      a & x.signing_keys;
-//      a & x.msout;
-//    }
+//		template <class Archive>
+//		inline void serialize(Archive &a, tools::wallet2::tx_construction_data &x, const boost::serialization::version_type ver)
+//		{
+//			a & x.sources;
+//			a & x.change_dts;
+//			a & x.splitted_dsts;
+//			if (ver < 2)
+//			{
+//				// load list to vector
+//				std::list<size_t> selected_transfers;
+//				a & selected_transfers;
+//				x.selected_transfers.clear();
+//				x.selected_transfers.reserve(selected_transfers.size());
+//				for (size_t t: selected_transfers)
+//					x.selected_transfers.push_back(t);
+//			}
+//			a & x.extra;
+//			a & x.unlock_time;
+//			a & x.use_rct;
+//			a & x.dests;
+//			if (ver < 1)
+//			{
+//				x.subaddr_account = 0;
+//				return;
+//			}
+//			a & x.subaddr_account;
+//			a & x.subaddr_indices;
+//			if (ver < 2)
+//				return;
+//			a & x.selected_transfers;
+//		}
 //
-//    template <class Archive>
-//    inline void serialize(Archive &a, tools::wallet2::pending_tx &x, const boost::serialization::version_type ver)
-//    {
-//      a & x.tx;
-//      a & x.dust;
-//      a & x.fee;
-//      a & x.dust_added_to_fee;
-//      a & x.change_dts;
-//      if (ver < 2)
-//      {
-//        // load list to vector
-//        std::list<size_t> selected_transfers;
-//        a & selected_transfers;
-//        x.selected_transfers.clear();
-//        x.selected_transfers.reserve(selected_transfers.size());
-//        for (size_t t: selected_transfers)
-//          x.selected_transfers.push_back(t);
-//      }
-//      a & x.key_images;
-//      a & x.tx_key;
-//      a & x.dests;
-//      a & x.construction_data;
-//      if (ver < 1)
-//        return;
-//      a & x.additional_tx_keys;
-//      if (ver < 2)
-//        return;
-//      a & x.selected_transfers;
-//      if (ver < 3)
-//        return;
-//      a & x.multisig_sigs;
-//    }
-//  }
+//		template <class Archive>
+//		inline void serialize(Archive &a, tools::wallet2::multisig_sig &x, const boost::serialization::version_type ver)
+//		{
+//			a & x.sigs;
+//			a & x.ignore;
+//			a & x.used_L;
+//			a & x.signing_keys;
+//			a & x.msout;
+//		}
+//
+//		template <class Archive>
+//		inline void serialize(Archive &a, tools::wallet2::pending_tx &x, const boost::serialization::version_type ver)
+//		{
+//			a & x.tx;
+//			a & x.dust;
+//			a & x.fee;
+//			a & x.dust_added_to_fee;
+//			a & x.change_dts;
+//			if (ver < 2)
+//			{
+//				// load list to vector
+//				std::list<size_t> selected_transfers;
+//				a & selected_transfers;
+//				x.selected_transfers.clear();
+//				x.selected_transfers.reserve(selected_transfers.size());
+//				for (size_t t: selected_transfers)
+//					x.selected_transfers.push_back(t);
+//			}
+//			a & x.key_images;
+//			a & x.tx_key;
+//			a & x.dests;
+//			a & x.construction_data;
+//			if (ver < 1)
+//				return;
+//			a & x.additional_tx_keys;
+//			if (ver < 2)
+//				return;
+//			a & x.selected_transfers;
+//			if (ver < 3)
+//				return;
+//			a & x.multisig_sigs;
+//		}
+//	}
 //}
 
 namespace tools

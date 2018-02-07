@@ -30,65 +30,55 @@
 
 #pragma once
 
+#include <stdint.h>
 #include <stddef.h>
-#include <iostream>
-#include <boost/utility/value_init.hpp>
 
-#include "common/pod-class.h"
-#include "generic-ops.h"
-#include "hex.h"
-#include "span.h"
+#define CHACHA_KEY_SIZE 32
+#define CHACHA_IV_SIZE 8
+
+#if defined(__cplusplus)
+#include <memory.h>
+
+#include "memwipe.h"
+#include "hash.h"
 
 namespace crypto {
-
   extern "C" {
-#include "hash-ops.h"
+#endif
+    void chacha8(const void* data, size_t length, const uint8_t* key, const uint8_t* iv, char* cipher);
+    void chacha20(const void* data, size_t length, const uint8_t* key, const uint8_t* iv, char* cipher);
+#if defined(__cplusplus)
   }
 
+  using chacha_key = tools::scrubbed_arr<uint8_t, CHACHA_KEY_SIZE>;
+
 #pragma pack(push, 1)
-  POD_CLASS hash {
-    char data[HASH_SIZE];
-  };
-  POD_CLASS hash8 {
-    char data[8];
+  // MS VC 2012 doesn't interpret `class chacha_iv` as POD in spite of [9.0.10], so it is a struct
+  struct chacha_iv {
+    uint8_t data[CHACHA_IV_SIZE];
   };
 #pragma pack(pop)
 
-  static_assert(sizeof(hash) == HASH_SIZE, "Invalid structure size");
-  static_assert(sizeof(hash8) == 8, "Invalid structure size");
+  static_assert(sizeof(chacha_key) == CHACHA_KEY_SIZE && sizeof(chacha_iv) == CHACHA_IV_SIZE, "Invalid structure size");
 
-  /*
-    Cryptonight hash functions
-  */
-
-  inline void cn_fast_hash(const void *data, std::size_t length, hash &hash) {
-    cn_fast_hash(data, length, reinterpret_cast<char *>(&hash));
+  inline void chacha8(const void* data, std::size_t length, const chacha_key& key, const chacha_iv& iv, char* cipher) {
+    chacha8(data, length, key.data(), reinterpret_cast<const uint8_t*>(&iv), cipher);
   }
 
-  inline hash cn_fast_hash(const void *data, std::size_t length) {
-    hash h;
-    cn_fast_hash(data, length, reinterpret_cast<char *>(&h));
-    return h;
+  inline void chacha20(const void* data, std::size_t length, const chacha_key& key, const chacha_iv& iv, char* cipher) {
+    chacha20(data, length, key.data(), reinterpret_cast<const uint8_t*>(&iv), cipher);
   }
 
-  inline void cn_slow_hash(const void *data, std::size_t length, hash &hash) {
-    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash));
+  inline void generate_chacha_key(const void *data, size_t size, chacha_key& key) {
+    static_assert(sizeof(chacha_key) <= sizeof(hash), "Size of hash must be at least that of chacha_key");
+    tools::scrubbed_arr<char, HASH_SIZE> pwd_hash;
+    crypto::cn_slow_hash(data, size, pwd_hash.data());
+    memcpy(&key, pwd_hash.data(), sizeof(key));
   }
 
-  inline void tree_hash(const hash *hashes, std::size_t count, hash &root_hash) {
-    tree_hash(reinterpret_cast<const char (*)[HASH_SIZE]>(hashes), count, reinterpret_cast<char *>(&root_hash));
+  inline void generate_chacha_key(std::string password, chacha_key& key) {
+    return generate_chacha_key(password.data(), password.size(), key);
   }
-
-  inline std::ostream &operator <<(std::ostream &o, const crypto::hash &v) {
-    epee::to_hex::formatted(o, epee::as_byte_span(v)); return o;
-  }
-  inline std::ostream &operator <<(std::ostream &o, const crypto::hash8 &v) {
-    epee::to_hex::formatted(o, epee::as_byte_span(v)); return o;
-  }
-
-  const static crypto::hash null_hash = boost::value_initialized<crypto::hash>();
-  const static crypto::hash8 null_hash8 = boost::value_initialized<crypto::hash8>();
 }
 
-CRYPTO_MAKE_HASHABLE(hash)
-CRYPTO_MAKE_COMPARABLE(hash8)
+#endif

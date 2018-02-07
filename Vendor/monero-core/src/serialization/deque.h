@@ -30,50 +30,35 @@
 
 #pragma once
 
-#include <stdint.h>
-#include <stddef.h>
+#include <deque>
 
-#define CHACHA8_KEY_SIZE 32
-#define CHACHA8_IV_SIZE 8
+template <template <bool> class Archive, class T>
+bool do_serialize(Archive<false> &ar, std::deque<T> &v);
+template <template <bool> class Archive, class T>
+bool do_serialize(Archive<true> &ar, std::deque<T> &v);
 
-#if defined(__cplusplus)
-#include <memory.h>
+namespace serialization
+{
+  namespace detail
+  {
+    template <typename T>
+    void do_reserve(std::deque<T> &c, size_t N)
+    {
+      c.reserve(N);
+    }
 
-#include "common/memwipe.h"
-#include "hash.h"
-
-namespace crypto {
-  extern "C" {
-#endif
-    void chacha8(const void* data, size_t length, const uint8_t* key, const uint8_t* iv, char* cipher);
-#if defined(__cplusplus)
-  }
-
-  using chacha8_key = tools::scrubbed_arr<uint8_t, CHACHA8_KEY_SIZE>;
-
-#pragma pack(push, 1)
-  // MS VC 2012 doesn't interpret `class chacha8_iv` as POD in spite of [9.0.10], so it is a struct
-  struct chacha8_iv {
-    uint8_t data[CHACHA8_IV_SIZE];
-  };
-#pragma pack(pop)
-
-  static_assert(sizeof(chacha8_key) == CHACHA8_KEY_SIZE && sizeof(chacha8_iv) == CHACHA8_IV_SIZE, "Invalid structure size");
-
-  inline void chacha8(const void* data, std::size_t length, const chacha8_key& key, const chacha8_iv& iv, char* cipher) {
-    chacha8(data, length, key.data(), reinterpret_cast<const uint8_t*>(&iv), cipher);
-  }
-
-  inline void generate_chacha8_key(const void *data, size_t size, chacha8_key& key) {
-    static_assert(sizeof(chacha8_key) <= sizeof(hash), "Size of hash must be at least that of chacha8_key");
-    tools::scrubbed_arr<char, HASH_SIZE> pwd_hash;
-    crypto::cn_slow_hash(data, size, pwd_hash.data());
-    memcpy(&key, pwd_hash.data(), sizeof(key));
-  }
-
-  inline void generate_chacha8_key(std::string password, chacha8_key& key) {
-    return generate_chacha8_key(password.data(), password.size(), key);
+    template <typename T>
+    void do_add(std::deque<T> &c, T &&e)
+    {
+      c.emplace_back(std::move(e));
+    }
   }
 }
 
-#endif
+#include "serialization.h"
+
+template <template <bool> class Archive, class T>
+bool do_serialize(Archive<false> &ar, std::deque<T> &v) { return do_serialize_container(ar, v); }
+template <template <bool> class Archive, class T>
+bool do_serialize(Archive<true> &ar, std::deque<T> &v) { return do_serialize_container(ar, v); }
+

@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2014-2017, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -28,13 +28,31 @@
 // 
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
-#include <stddef.h>
-#include <stdint.h>
+#pragma once
 
-#include "hash-ops.h"
-#include "skein.h"
+#include <set>
 
-void hash_extra_skein(const void *data, size_t length, char *hash) {
-  int r = skein_hash(8 * HASH_SIZE, data, 8 * length, (uint8_t*)hash);
-  assert(SKEIN_SUCCESS == r);
+template <template <bool> class Archive, class T>
+bool do_serialize(Archive<false> &ar, std::unordered_set<T> &v);
+template <template <bool> class Archive, class T>
+bool do_serialize(Archive<true> &ar, std::unordered_set<T> &v);
+
+namespace serialization
+{
+  namespace detail
+  {
+    template <typename T>
+    void do_add(std::unordered_set<T> &c, T &&e)
+    {
+      c.insert(std::move(e));
+    }
+  }
 }
+
+#include "serialization.h"
+
+template <template <bool> class Archive, class T>
+bool do_serialize(Archive<false> &ar, std::unordered_set<T> &v) { return do_serialize_container(ar, v); }
+template <template <bool> class Archive, class T>
+bool do_serialize(Archive<true> &ar, std::unordered_set<T> &v) { return do_serialize_container(ar, v); }
+

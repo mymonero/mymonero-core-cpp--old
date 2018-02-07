@@ -36,8 +36,12 @@
 //
 #include "monero_transfer_utils.hpp"
 #include "monero_fork_rules.hpp"
+//
 using namespace monero_transfer_utils;
 using namespace monero_fork_rules;
+using namespace cryptonote;
+using namespace std;
+using namespace crypto;
 
 #define SUBADDRESS_LOOKAHEAD_MAJOR 50
 #define SUBADDRESS_LOOKAHEAD_MINOR 200
@@ -52,7 +56,7 @@ namespace tools
 		m_testnet(testnet),
 	//	m_always_confirm_transfers(true),
 	//	m_print_ring_members(false),
-	//	m_store_tx_info(true),
+//		m_store_tx_info(true),
 	//	m_default_mixin(0),
 	//	m_default_priority(0),
 	//	m_refresh_type(RefreshOptimizeCoinbase),
@@ -108,7 +112,7 @@ namespace tools
 		m_unconfirmed_txs.clear();
 		m_payments.clear();
 		m_tx_keys.clear();
-	//	m_additional_tx_keys.clear();
+//		m_additional_tx_keys.clear();
 		m_confirmed_txs.clear();
 		m_unconfirmed_payments.clear();
 	//	m_scanned_pool_txs[0].clear();
@@ -379,7 +383,7 @@ namespace tools
 		
 		auto unconf_it = m_unconfirmed_txs.find(txid);
 		if(unconf_it != m_unconfirmed_txs.end()) {
-	//		if (m_store_tx_info) {
+			//			if (m_store_tx_info) { // TODO: this flag might not need to be here - or its name should be expanded to reflect that it controls m_confirmed_txs management
 				try {
 					m_confirmed_txs.insert(std::make_pair(txid, wallet2::confirmed_transfer_details(unconf_it->second, height)));
 				}
@@ -387,7 +391,7 @@ namespace tools
 					// can fail if the tx has unexpected input types
 					LOG_PRINT_L0("Failed to add outgoing transaction to confirmed transaction map");
 				}
-	//		}
+//			}
 			m_unconfirmed_txs.erase(unconf_it);
 		}
 	}

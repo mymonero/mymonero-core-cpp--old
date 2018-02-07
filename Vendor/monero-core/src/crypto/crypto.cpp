@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2017, The Monero Project
+// Copyright (c) 2014-2018, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -97,7 +97,7 @@ namespace crypto {
    * TODO: allow specifiying random value (for wallet recovery)
    * 
    */
-  secret_key crypto_ops::                                                                                                                                                                                                                                                                                            generate_keys(public_key &pub, secret_key &sec, const secret_key& recovery_key, bool recover) {
+  secret_key crypto_ops::generate_keys(public_key &pub, secret_key &sec, const secret_key& recovery_key, bool recover) {
     ge_p3 point;
 
     secret_key rng;

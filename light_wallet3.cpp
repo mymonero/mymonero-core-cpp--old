@@ -41,22 +41,25 @@ using namespace tools;
 using namespace crypto;
 using namespace cryptonote;
 
-static void emplace_or_replace( // TODO: factor…… where?
-	std::unordered_multimap<crypto::hash,
-	wallet2::pool_payment_details> &container,
-	const crypto::hash &key,
-	const wallet2::pool_payment_details &pd
-) {
-	auto range = container.equal_range(key);
-	for (auto i = range.first; i != range.second; ++i)
-	{
-		if (i->second.m_pd.m_tx_hash == pd.m_pd.m_tx_hash && i->second.m_pd.m_subaddr_index == pd.m_pd.m_subaddr_index)
+namespace
+{
+	static void emplace_or_replace( // TODO: factor…… where?
+		std::unordered_multimap<crypto::hash,
+		wallet2::pool_payment_details> &container,
+		const crypto::hash &key,
+		const wallet2::pool_payment_details &pd
+	) {
+		auto range = container.equal_range(key);
+		for (auto i = range.first; i != range.second; ++i)
 		{
-			i->second = pd;
-			return;
+			if (i->second.m_pd.m_tx_hash == pd.m_pd.m_tx_hash && i->second.m_pd.m_subaddr_index == pd.m_pd.m_subaddr_index)
+			{
+				i->second = pd;
+				return;
+			}
 		}
+		container.emplace(key, pd);
 	}
-	container.emplace(key, pd);
 }
 
 light_wallet3::light_wallet3(bool testnet, bool restricted)
