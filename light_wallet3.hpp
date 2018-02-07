@@ -89,14 +89,14 @@ namespace tools
 		uint64_t get_dynamic_per_kb_fee_estimate() const override; // required; but this impl intentionally causes exception on call
 		uint64_t get_per_kb_fee() const override;
 		//
-		bool create_signed_transaction(
+		bool create_signed_transaction( // assumes is_trusted_daemon=true
 			const std::string &to_address_string,
 			const std::string &amount_float_string,
 			const std::string *optl__payment_id_string,
 			uint32_t simple_priority,
 			monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
 			//
-			monero_transfer_utils::CreateSignedTxs_RetVals &retVals
+			wallet3_base::CreateTx_RetVals &retVals
 		) const;
 		void populate_amount_strings_for_get_random_outs(
 			const std::vector<size_t> &selected_transfers, // select from

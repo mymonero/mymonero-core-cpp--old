@@ -62,56 +62,6 @@ namespace monero_transfer_utils
 	};
 	typedef std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t, get_random_outs_fn_RetVals &)> get_random_outs_fn_type; // this function MUST be synchronous; it must also initialize a get_random_outs_fn_RetVals (e.g. 'retVals = {};')
 	//
-	struct CreateSignedTxs_Args
-	{
-		CreateSignedTxs_Args() = delete; // disallow `Args foo;` default constructor
-		//
-		const cryptonote::account_keys &account_keys;
-		//
-		std::string to_address_string;
-		std::string amount_float_string; // passed as string b/c function wants to parse amount
-		const std::string *optl__payment_id_string;
-		uint32_t mixin; // aka fake_outs_count
-		//
-		uint32_t current_subaddr_account;
-		const std::set<uint32_t> &subaddr_indices;
-		uint64_t unlocked_balance_for_subaddr_index; // this is passed in b/c light_wallet3 wants to calculate it in its own way (which raises questions)
-		const std::unordered_map<crypto::public_key, cryptonote::subaddress_index> &subaddresses;
-		//
-		const wallet2::transfer_container &transfers;
-		std::unordered_map<crypto::hash, tools::wallet2::unconfirmed_transfer_details> unconfirmed_txs;
-		//
-		monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn; // this function MUST be synchronous - a std::promise may be used
-		//
-		const uint64_t per_kb_fee;
-		uint64_t blockchain_size;
-		const uint64_t unlock_time;
-		uint32_t priority;
-		uint32_t default_priority;
-		//
-		uint64_t upper_transaction_size_limit__or_0_for_default;
-		//
-		uint32_t min_output_count;
-		uint64_t min_output_value;
-		//
-		uint32_t multisig_threshold;
-		std::vector<crypto::public_key> multisig_signers;
-		//
-		bool merge_destinations;
-		bool is_testnet;
-		bool is_trusted_daemon;
-		bool is_wallet_multisig;
-	};
-	struct CreateSignedTxs_RetVals: RetVals_base
-	{
-		boost::optional<tools::wallet2::signed_tx_set> signed_tx_set;
-	};
-	bool create_signed_transaction( // derived from simplewallet::transfer_main()
-	// returns !did_error
-		const CreateSignedTxs_Args &args,
-		CreateSignedTxs_RetVals &retVals // initializes a retVals for you
-	);
-	//
 	//
 	// Shared - create_transactions_*
 	//

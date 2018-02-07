@@ -36,6 +36,7 @@
 //
 #include "monero_transfer_utils.hpp"
 #include "monero_fork_rules.hpp"
+#include "monero_paymentID_utils.hpp"
 //
 using namespace monero_transfer_utils;
 using namespace monero_fork_rules;
@@ -406,35 +407,110 @@ namespace tools
 		std::set<uint32_t> subaddr_indices,
 		uint32_t current_subaddress_account_idx,
 		monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn,
+		bool is_trusted_daemon,
 		//
-		monero_transfer_utils::CreateSignedTxs_RetVals &retVals
+		wallet3_base::CreateTx_RetVals &retVals
 	) const {
-		CreateSignedTxs_Args args =
+		retVals = {};
+		//
+		// Detect hash8 or hash32 char hex string as pid and configure 'extra' accordingly
+		std::vector<uint8_t> extra;
+		bool payment_id_seen = false;
 		{
-			m_account.get_keys(),
+			bool r = false;
+			if (optl__payment_id_string_ptr) {
+				crypto::hash payment_id;
+				r = monero_paymentID_utils::parse_long_payment_id((*optl__payment_id_string_ptr), payment_id);
+				if (r) {
+					std::string extra_nonce;
+					cryptonote::set_payment_id_to_tx_extra_nonce(extra_nonce, payment_id);
+					r = cryptonote::add_extra_nonce_to_tx_extra(extra, extra_nonce);
+				} else {
+					crypto::hash8 payment_id8;
+					r = monero_paymentID_utils::parse_short_payment_id((*optl__payment_id_string_ptr), payment_id8);
+					if (r) {
+						std::string extra_nonce;
+						cryptonote::set_encrypted_payment_id_to_tx_extra_nonce(extra_nonce, payment_id8);
+						r = cryptonote::add_extra_nonce_to_tx_extra(extra, extra_nonce);
+					}
+				}
+				if (!r) {
+					retVals.did_error = true;
+					retVals.err_string = "payment id has invalid format, expected 16 or 64 character hex string";
+					return false;
+				}
+				payment_id_seen = true;
+			}
+		}
+		std::vector<cryptonote::tx_destination_entry> dsts;
+		cryptonote::tx_destination_entry de;
+		{
+			bool r = false;
+			cryptonote::address_parse_info info;
+			r = cryptonote::get_account_address_from_str(info, m_testnet, to_address_string);
+			if (!r) {
+				retVals.did_error = true;
+				retVals.err_string = "couldn't parse address.";
+				return false;
+			}
+			de.addr = info.address;
+			de.is_subaddress = info.is_subaddress;
 			//
-			to_address_string,
-			amount_float_string,
-			optl__payment_id_string_ptr,
+			if (info.has_payment_id) {
+				if (payment_id_seen) {
+					retVals.did_error = true;
+					retVals.err_string = "a single transaction cannot use more than one payment id";
+					return false;
+				}
+				std::string extra_nonce;
+				set_encrypted_payment_id_to_tx_extra_nonce(extra_nonce, info.payment_id);
+				bool r = add_extra_nonce_to_tx_extra(extra, extra_nonce);
+				if (!r) {
+					retVals.did_error = true;
+					retVals.err_string = "failed to set up payment id, though it was decoded correctly";
+					return false;
+				}
+				payment_id_seen = true;
+			}
+			//
+			r = cryptonote::parse_amount(de.amount, amount_float_string);
+			THROW_WALLET_EXCEPTION_IF(!r || 0 == de.amount, error::wallet_internal_error, "amount is wrong... expected number from 0 to " + print_money(std::numeric_limits<uint64_t>::max()));
+		}
+		dsts.push_back(de);
+		//
+		uint64_t unlock_block = 0; // aka unlock_time
+		// TODO: support locked txs
+		//	if (transfer_type == TransferLocked) {
+		//		bc_height = get_daemon_blockchain_height(err);
+		//		if (!err.empty()) {
+		//			fail_msg_writer() << tr("failed to get blockchain height: ") << err;
+		//			return false;
+		//		}
+		//		unlock_block = bc_height + locked_blocks;
+		//	}
+		
+		uint32_t default_priority = 1;
+		bool merge_destinations = false; // apparent default from wallet2
+		//
+		CreatePendingTx_RetVals pendingTxs_retVals;
+		bool r = monero_transfer_utils::create_pending_transactions_3(
+			m_account.get_keys(),
+			m_transfers,
+			m_unconfirmed_txs,
+			dsts,
 			mixin,
+			unlock_block,
+			get_per_kb_fee(),
+			blockchain_height(),
+			simple_priority,
+			default_priority,
+			extra,
+			m_upper_transaction_size_limit,
 			//
 			current_subaddress_account_idx,
 			subaddr_indices,
 			unlocked_balance(current_subaddress_account_idx),
 			m_subaddresses,
-			//
-			m_transfers,
-			m_unconfirmed_txs,
-			//
-			get_random_outs_fn,
-			//
-			get_per_kb_fee(),
-			blockchain_height(),
-			0, // unlock_time
-			simple_priority,
-			1, // default_priority
-			//
-			m_upper_transaction_size_limit,
 			//
 			0, // min_output_count
 			0, // min_output_value
@@ -442,19 +518,30 @@ namespace tools
 			m_multisig_threshold,
 			m_multisig_signers,
 			//
-			false, // merge_destinations - apparent default from wallet2
-			false, // is_testnet
-			true, // is_trusted_daemon
-			m_multisig // is_wallet_multisig
-		};
-		bool r = monero_transfer_utils::create_signed_transaction(
-			args,
-			retVals // passing retVals ref through from fn args
+			merge_destinations,
+			is_trusted_daemon,
+			m_testnet,
+			m_multisig,
+			//
+			get_random_outs_fn,
+			//
+			pendingTxs_retVals
 		);
-		if (retVals.did_error) {
-			return false; // retVals already populated with err values
+		if (pendingTxs_retVals.did_error) {
+			retVals.did_error = true;
+			retVals.err_string = *pendingTxs_retVals.err_string;
+			//
+			return false;
 		}
 		THROW_WALLET_EXCEPTION_IF(!r, error::wallet_internal_error, "Unexpected !did_succeed=false without an error");
+		if ((*pendingTxs_retVals.pending_txs).empty()) {
+			retVals.did_error = true;
+			retVals.err_string = "No outputs found, or daemon is not ready"; // TODO: improve error message appropriateness
+			return false;
+		}
+		//
+		retVals.pending_txs = *pendingTxs_retVals.pending_txs;
+		//
 		return true;
 	}
 	bool wallet3_base::tx_add_fake_output(

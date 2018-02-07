@@ -164,6 +164,10 @@ namespace tools
 		void process_unconfirmed(const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t height);
 		//
 		// Transferring
+		struct CreateTx_RetVals: RetVals_base
+		{
+			boost::optional<std::vector<tools::wallet2::pending_tx>> pending_txs;
+		};
 		bool base__create_signed_transaction(
 			const std::string &to_address_string,
 			const std::string &amount_float_string,
@@ -173,8 +177,9 @@ namespace tools
 			std::set<uint32_t> subaddr_indices,
 			uint32_t current_subaddress_account_idx,
 			monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
+			bool is_trusted_daemon,
 			//
-			monero_transfer_utils::CreateSignedTxs_RetVals &retVals
+			wallet3_base::CreateTx_RetVals &retVals
 		) const; // have your concrete subclass call this with special parameters
 		//
     	bool tx_add_fake_output(std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs, uint64_t global_index, const crypto::public_key& tx_public_key, const rct::key& mask, uint64_t real_index, bool unlocked) const;

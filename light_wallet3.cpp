@@ -620,11 +620,11 @@ uint64_t light_wallet3::blockchain_height() const
 bool light_wallet3::create_signed_transaction(
 	const std::string &to_address_string,
 	const std::string &amount_float_string,
-	const std::string *optl__payment_id_string, // TODO: pass this as ref?
+	const std::string *optl__payment_id_string,
 	uint32_t simple_priority,
 	monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn,
 	//
-	monero_transfer_utils::CreateSignedTxs_RetVals &retVals
+	wallet3_base::CreateTx_RetVals &retVals
 ) const {
 	 // TODO: support subaddresses - currently disabled due to time it takes to expand on wallet generate()
 	std::set<uint32_t> subaddr_indices;
@@ -639,6 +639,8 @@ bool light_wallet3::create_signed_transaction(
 		subaddr_indices,
 		current_subaddress_account_idx,
 		get_random_outs_fn,
+		true, // is_trusted_daemon
+		//
 		retVals
 	);
 }
