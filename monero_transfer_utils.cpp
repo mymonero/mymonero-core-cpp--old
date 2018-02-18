@@ -9,7 +9,6 @@
 #include <random>
 //
 #include "monero_transfer_utils.hpp"
-#include "monero_key_utils.hpp"
 #include "monero_paymentID_utils.hpp"
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "monero_transfer_utils.hpp"

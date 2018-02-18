@@ -38,7 +38,6 @@
 
 #include <boost/optional.hpp>
 #include "crypto.h"
-#include "monero_key_utils.hpp" // for the legacy 16 byte seed type support
 #include "cryptonote_basic.h"
 #include "cryptonote_basic_impl.h"
 #include "electrum-words.h"
@@ -47,23 +46,6 @@
 //
 using namespace tools;
 #include "tools__ret_vals.hpp"
-//
-// Legacy seed / mnemonic utils fns
-namespace crypto
-{
-	namespace ElectrumWords
-	{
-		bool bytes_to_words(const crypto::legacy16B_secret_key& src,
-							std::string& words,
-							const std::string &language_name);
-		bool words_to_bytes(std::string words,
-							crypto::legacy16B_secret_key& dst,
-							std::string &language_name);
-		//
-		static unsigned long legacy_16B_seed_mnemonic_word_count = 13;
-		static unsigned long stable_32B_seed_mnemonic_word_count = 25;
-	}
-}
 //
 namespace monero_wallet_utils
 {
@@ -77,8 +59,8 @@ namespace monero_wallet_utils
 		bool from_legacy16B_lw_seed = false;
 	};
 	bool decoded_seed(
-		const std::string &mnemonic_string,
-		const std::string &mnemonic_language_string,
+		std::string mnemonic_string,
+		std::string mnemonic_language_string,
 		//
 		MnemonicDecodedSeed_RetVals &retVals
 	);
@@ -102,13 +84,13 @@ namespace monero_wallet_utils
 		boost::optional<WalletDescription> optl__desc = boost::none;
 	};
 	bool new_wallet(
-		const std::string &mnemonic_language,
+		std::string mnemonic_language,
 		WalletDescriptionRetVals &retVals,
 		bool isTestnet = false
 	);
 	bool wallet_with(
-		const std::string &mnemonic_string,
-		const std::string &mnemonic_language__ptr,
+		std::string mnemonic_string,
+		std::string mnemonic_language,
 		WalletDescriptionRetVals &retVals,
 		bool isTestnet = false
 	);

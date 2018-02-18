@@ -92,6 +92,11 @@ namespace crypto {
     sc_reduce32(&res);
   }
 
+  void coerce_valid_sec_key_from(const legacy16B_secret_key &legacy16B_mymonero_sec_seed, secret_key &dst__sec_seed) { // cn_fast_hash legacy16B_sec_seed in order to 'pad' it to 256 bits so it can be chopped to ec_scalar
+    cn_pad_by_fast_hash((uint8_t *)&legacy16B_mymonero_sec_seed, sizeof(crypto::legacy16B_secret_key),
+						(uint8_t *)&dst__sec_seed, sizeof(crypto::secret_key));
+  }
+
   /* 
    * generate public and secret keys from a random 256-bit integer
    * TODO: allow specifiying random value (for wallet recovery)

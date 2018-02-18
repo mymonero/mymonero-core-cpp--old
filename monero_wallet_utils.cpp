@@ -36,7 +36,6 @@
 #include "monero_wallet_utils.hpp"
 #include <boost/algorithm/string.hpp>
 #include "cryptonote_basic/account.h"
-#include "monero_key_utils.hpp"
 //
 #include "string_tools.h"
 using namespace epee;
@@ -48,23 +47,8 @@ extern "C" {
 using namespace monero_wallet_utils;
 using namespace crypto; // for extension
 //
-bool ElectrumWords::words_to_bytes(std::string words, legacy16B_secret_key& dst, std::string &language_name)
-{
-	std::string s;
-	if (!ElectrumWords::words_to_bytes(words, s, sizeof(dst), true, language_name))
-		return false;
-	if (s.size() != sizeof(dst))
-		return false;
-	dst = *(const legacy16B_secret_key*)s.data();
-	return true;
-}
-bool ElectrumWords::bytes_to_words(const legacy16B_secret_key& src, std::string& words, const std::string &language_name)
-{
-	return ElectrumWords::bytes_to_words(src.data, sizeof(src), words, language_name);
-}
-//
 bool monero_wallet_utils::new_wallet(
-    const std::string &mnemonic_language__ref,
+    std::string mnemonic_language,
 	WalletDescriptionRetVals &retVals,
 	bool isTestnet
 )
@@ -78,7 +62,7 @@ bool monero_wallet_utils::new_wallet(
 	std::string address_string = account.get_public_address_str(isTestnet); // getting the string here instead of leaving it to the consumer b/c get_public_address_str could potentially change in implementation (see TODO) so it's not right to duplicate that here
 	//
 	std::string mnemonic_string;
-	bool r = crypto::ElectrumWords::bytes_to_words(nonLegacy32B_sec_seed, mnemonic_string, mnemonic_language__ref);
+	bool r = crypto::ElectrumWords::bytes_to_words(nonLegacy32B_sec_seed, mnemonic_string, std::move(mnemonic_language));
 	// ^-- it's OK to directly call ElectrumWords w/ crypto::secret_key as we are generating new wallet, not reading
 	if (!r) {
 		retVals.did_error = true;
@@ -104,30 +88,26 @@ bool monero_wallet_utils::new_wallet(
 }
 //
 bool monero_wallet_utils::decoded_seed(
-	const std::string &mnemonic_string_ref,
-	const std::string &mnemonic_language__ref,
+	std::string mnemonic_string,
+	std::string mnemonic_language,
 	MnemonicDecodedSeed_RetVals &retVals
 ) {
 	retVals = {};
 	//
 	// sanitize inputs
-	std::string mnemonic_string = mnemonic_string_ref; // copy for to_lower… TODO: any better way?
 	if (mnemonic_string.empty()) {
 		retVals.did_error = true;
 		retVals.err_string = "Please enter a valid seed";
 		//
 		return false;
 	}
-	boost::algorithm::to_lower(mnemonic_string); // critial
-	// TODO/FIXME: any other normalization / sanitization on mnemonic_string ?
-	//
-	std::string mnemonic_language = mnemonic_language__ref; // FIXME: not sure why ElectrumWords::words_to_bytes can't take a ref
+	boost::algorithm::to_lower(mnemonic_string); // critical
+	// TODO: strip wrapping whitespace? anything else?
 	//
 	std::stringstream stream(mnemonic_string); // to count words…
-	unsigned long word_count = std::distance(
-		std::istream_iterator<std::string>(stream),
-		std::istream_iterator<std::string>()
-	);
+	unsigned long word_count = std::distance(std::istream_iterator<std::string>(stream), std::istream_iterator<std::string>());
+	//	unsigned long word_count = boost::range::distance(boost::algorithm::make_split_iterator(mnemonic_string, boost::algorithm::is_space())); // TODO: get this workin
+	//
 	crypto::secret_key sec_seed;
 	std::string sec_seed_string; // TODO/FIXME: needed this for shared ref outside of if branch below… not intending extra default constructor call but not sure how to get around it yet
 	bool from_legacy16B_lw_seed = false;
@@ -151,7 +131,7 @@ bool monero_wallet_utils::decoded_seed(
 			//
 			return false;
 		}
-		monero_key_utils::coerce_valid_sec_key_from(legacy16B_sec_seed, sec_seed);
+		crypto::coerce_valid_sec_key_from(legacy16B_sec_seed, sec_seed);
 		sec_seed_string = string_tools::pod_to_hex(legacy16B_sec_seed); // <- NOTE: we are returning the _LEGACY_ seed as the string… this is important so we don't lose the fact it was 16B/13-word originally!
 	} else {
 		retVals.did_error = true;
@@ -168,15 +148,15 @@ bool monero_wallet_utils::decoded_seed(
 }
 //
 bool monero_wallet_utils::wallet_with(
-	const std::string &mnemonic_string_ref,
-	const std::string &mnemonic_language__ref,
+	std::string mnemonic_string,
+	std::string mnemonic_language,
 	WalletDescriptionRetVals &retVals,
 	bool isTestnet
 ) {
 	retVals = {};
 	//
 	MnemonicDecodedSeed_RetVals decodedSeed_retVals;
-	bool r = decoded_seed(mnemonic_string_ref, mnemonic_language__ref, decodedSeed_retVals);
+	bool r = decoded_seed(std::move(mnemonic_string), std::move(mnemonic_language), decodedSeed_retVals);
 	if (!r) {
 		retVals.did_error = true;
 		retVals.err_string = *decodedSeed_retVals.err_string; // TODO: assert?
@@ -309,7 +289,7 @@ bool monero_wallet_utils::validate_wallet_components_with(
 					//
 					return false;
 				}
-				monero_key_utils::coerce_valid_sec_key_from(legacy16B_sec_seed, sec_seed);
+				crypto::coerce_valid_sec_key_from(legacy16B_sec_seed, sec_seed);
 			}
 			cryptonote::account_base expected_account{}; // this initializes the wallet and should call the default constructor
 			expected_account.generate(sec_seed, true/*recover*/, false/*two_random*/, from_legacy16B_lw_seed);

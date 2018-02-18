@@ -59,7 +59,11 @@ namespace crypto
   namespace ElectrumWords
   {
 
-    const int seed_length = 24;
+	static unsigned long legacy_16B_seed_mnemonic_word_count = 12 + 1;
+	  //
+	const int seed_length = 24;
+	static unsigned long stable_32B_seed_mnemonic_word_count = seed_length + 1;
+	  
     const std::string old_language_name = "EnglishOld";
     /*!
      * \brief Converts seed words to bytes (secret key).
@@ -82,7 +86,16 @@ namespace crypto
     bool words_to_bytes(std::string words, crypto::secret_key& dst,
       std::string &language_name);
 
-    /*!
+	  /*!
+	   * \brief Converts seed words to bytes (secret key).
+	   * \param  words           String containing 13 words separated by spaces.
+	   * \param  dst             To put the 16-byte secret key restored from the words.
+	   * \param  language_name   Language of the seed as found gets written here.
+	   * \return                 false if not a multiple of 3 words, or if word is not in the words list
+	   */
+	  bool words_to_bytes(std::string words, crypto::legacy16B_secret_key& dst, std::string &language_name);
+
+	  /*!
      * \brief Converts bytes to seed words.
      * \param  src           Secret data
      * \param  len           Secret data length in bytes (positive multiples of 4 only)
@@ -103,6 +116,16 @@ namespace crypto
     bool bytes_to_words(const crypto::secret_key& src, std::string& words,
       const std::string &language_name);
 
+	  /*!
+	   * \brief Converts bytes (secret key) to seed words.
+	   * \param  src           16-byte legacy secret key
+	   * \param  words         Space delimited concatenated words get written here.
+	   * \param  language_name Seed language name
+	   * \return               true if successful false if not. Unsuccessful if wrong key size.
+	   */
+
+    bool bytes_to_words(const crypto::legacy16B_secret_key& src, std::string& words, const std::string &language_name);	  
+	  
     /*!
      * \brief Gets a list of seed languages that are supported.
      * \param languages A vector is set to the list of languages.
