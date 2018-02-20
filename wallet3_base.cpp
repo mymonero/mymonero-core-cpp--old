@@ -154,9 +154,7 @@ namespace tools
 	//	cryptonote::block b;
 	//	generate_genesis(b);
 	//	m_blockchain.push_back(get_block_hash(b));
-		//
-		// NOTE: commented to avoid performance hit for now
-//		add_subaddress_account(tools::wallet3_base::tr("Primary account"));
+		add_subaddress_account(tools::wallet3_base::tr("Primary account"));
 		
 		return retval;
 	}
@@ -177,6 +175,7 @@ namespace tools
 	//	cryptonote::block b;
 	//	generate_genesis(b);
 	//	m_blockchain.push_back(get_block_hash(b));
+		add_subaddress_account(tr("Primary account"));
 	}
 	//
 	// Accessors
