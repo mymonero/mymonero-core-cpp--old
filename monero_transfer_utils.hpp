@@ -61,6 +61,7 @@ namespace monero_transfer_utils
 	{ // no other params necessary for now - this is for passing the err str back
 	};
 	typedef std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t, get_random_outs_fn_RetVals &)> get_random_outs_fn_type; // this function MUST be synchronous; it must also initialize a get_random_outs_fn_RetVals (e.g. 'retVals = {};')
+	typedef std::function<bool(uint8_t, int64_t)> use_fork_rules_fn_type;
 	//
 	//
 	// Shared - create_transactions_*
@@ -99,7 +100,8 @@ namespace monero_transfer_utils
 		bool is_testnet,
 		bool is_wallet_multisig,
 		//
-		monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
+		get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
+		use_fork_rules_fn_type use_fork_rules_fn,
 		//
 		CreatePendingTx_RetVals &retVals // initializes a retVals for you
 	);	
@@ -129,7 +131,9 @@ namespace monero_transfer_utils
 		cryptonote::transaction& tx,
 		tools::wallet2::pending_tx &ptx,
 		//
-		monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
+		get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
+		use_fork_rules_fn_type use_fork_rules_fn,
+		//
 		tools::RetVals_base &retVals
 	);
 	void transfer_selected_rct(
@@ -153,14 +157,16 @@ namespace monero_transfer_utils
 		tools::wallet2::pending_tx &ptx,
 		bool bulletproof,
 		//
-		monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
+		get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
+		use_fork_rules_fn_type use_fork_rules_fn,
+		//
 		tools::RetVals_base &retVals
 	);
 	//
 	uint64_t num_rct_outputs(); // TODO: migrate to standard function
-	uint64_t get_upper_transaction_size_limit(uint64_t upper_transaction_size_limit__or_0_for_default);
-	uint64_t get_fee_multiplier(uint32_t priority, uint32_t default_priority, int fee_algorithm);
-	int get_fee_algorithm();
+	uint64_t get_upper_transaction_size_limit(uint64_t upper_transaction_size_limit__or_0_for_default, use_fork_rules_fn_type use_fork_rules_fn);
+	uint64_t get_fee_multiplier(uint32_t priority, uint32_t default_priority, int fee_algorithm, use_fork_rules_fn_type use_fork_rules_fn);
+	int get_fee_algorithm(use_fork_rules_fn_type use_fork_rules_fn);
 	//
 	uint64_t calculate_fee(uint64_t fee_per_kb, size_t bytes, uint64_t fee_multiplier);
 	uint64_t calculate_fee(uint64_t fee_per_kb, const cryptonote::blobdata &blob, uint64_t fee_multiplier);

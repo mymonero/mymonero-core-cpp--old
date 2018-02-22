@@ -1,8 +1,8 @@
 //
-//  monero_fork_rules.cpp
+//  full_wallet3.hpp
 //  MyMonero
 //
-//  Created by Paul Shapiro on 1/9/18.
+//  Created by Paul Shapiro on 2/21/18.
 //  Copyright (c) 2014-2018, MyMonero.com
 //
 //  All rights reserved.
@@ -31,23 +31,41 @@
 //  STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-//
-//
-#include "monero_fork_rules.hpp"
-//
-using namespace monero_fork_rules;
-//
-bool monero_fork_rules::use_fork_rules(uint8_t version, int64_t early_blocks, uint64_t node_rpc_proxy__height, uint64_t node_rpc_proxy__earliest_height)
-{
-  bool close_enough = node_rpc_proxy__height >=  node_rpc_proxy__earliest_height - early_blocks; // start using the rules that many blocks beforehand
-//  if (close_enough)
-//    LOG_PRINT_L2("Using v" << (unsigned)version << " rules");
-//  else
-//    LOG_PRINT_L2("Not using v" << (unsigned)version << " rules");
-  return close_enough;
-}
+#pragma once
 
-uint8_t monero_fork_rules::get_bulletproof_fork(bool is_testnet)
+#include "wallet3_base.hpp"
+#include "wallet2_transfer_utils.h" // for types
+#include "monero_transfer_utils.hpp"
+//
+using namespace tools;
+//
+namespace tools
 {
-  return 8;
+	// Sends view key to light wallet server (which connects to a daemon) for scanning
+	class full_wallet3 : public wallet3_base
+	{
+	public:
+		//
+		//
+		full_wallet3(bool testnet = false, bool restricted = false);
+		//
+		//
+		// Accessors - Overrides
+		bool use_fork_rules(uint8_t version, int64_t early_blocks) const override; // required
+		uint64_t get_dynamic_per_kb_fee_estimate() const override; // required
+		//
+		uint64_t node_rpc_proxy__get_height() const;
+		uint64_t node_rpc_proxy__get_earliest_height(uint8_t version) const;
+
+		//
+	protected:
+		//
+		// TODO
+//		NodeRPCProxy m_node_rpc_proxy;
+		//
+	};
 }
+BOOST_CLASS_VERSION(tools::full_wallet3, 1)
+
+
+

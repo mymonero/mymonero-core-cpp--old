@@ -134,6 +134,7 @@ bool monero_transfer_utils::create_pending_transactions_3(
 	bool is_wallet_multisig,
 	//
 	monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
+	use_fork_rules_fn_type use_fork_rules_fn,
 	//
 	CreatePendingTx_RetVals &retVals
 ) {
@@ -176,11 +177,11 @@ bool monero_transfer_utils::create_pending_transactions_3(
 	std::vector<TX> txes;
 	bool adding_fee; // true if new outputs go towards fee, rather than destinations
 	uint64_t needed_fee, available_for_fee = 0;
-	uint64_t upper_transaction_size_limit = get_upper_transaction_size_limit(upper_transaction_size_limit__or_0_for_default);
-	const bool use_rct = use_fork_rules(4, 0);
-	const bool bulletproof = use_fork_rules(get_bulletproof_fork(is_testnet), 0);
+	uint64_t upper_transaction_size_limit = get_upper_transaction_size_limit(upper_transaction_size_limit__or_0_for_default, use_fork_rules_fn);
+	const bool use_rct = use_fork_rules_fn(4, 0);
+	const bool bulletproof = use_fork_rules_fn(get_bulletproof_fork(is_testnet), 0);
 	
-	const uint64_t fee_multiplier = get_fee_multiplier(priority, default_priority, get_fee_algorithm());
+	const uint64_t fee_multiplier = get_fee_multiplier(priority, default_priority, get_fee_algorithm(use_fork_rules_fn), use_fork_rules_fn);
 	
 	// throw if attempting a transaction with no destinations
 	THROW_WALLET_EXCEPTION_IF(dsts.empty(), error::zero_destination);
@@ -485,9 +486,9 @@ bool monero_transfer_utils::create_pending_transactions_3(
 						 tx.selected_transfers.size() << " inputs");
 			RetVals_base tfer_retVals;
 			if (use_rct)
-				transfer_selected_rct(transfers, subaddresses, is_wallet_multisig, is_testnet, upper_transaction_size_limit, account_keys, multisig_threshold, wallet_multisig_signers, tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra, test_tx, test_ptx, bulletproof, get_random_outs_fn, tfer_retVals);
+				transfer_selected_rct(transfers, subaddresses, is_wallet_multisig, is_testnet, upper_transaction_size_limit, account_keys, multisig_threshold, wallet_multisig_signers, tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra, test_tx, test_ptx, bulletproof, get_random_outs_fn, use_fork_rules_fn, tfer_retVals);
 			else
-				transfer_selected(transfers, subaddresses, is_wallet_multisig, is_testnet, upper_transaction_size_limit, account_keys, multisig_threshold, tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra, detail::digit_split_strategy, tx_dust_policy(::config::DEFAULT_DUST_THRESHOLD), test_tx, test_ptx, get_random_outs_fn, tfer_retVals);
+				transfer_selected(transfers, subaddresses, is_wallet_multisig, is_testnet, upper_transaction_size_limit, account_keys, multisig_threshold, tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra, detail::digit_split_strategy, tx_dust_policy(::config::DEFAULT_DUST_THRESHOLD), test_tx, test_ptx, get_random_outs_fn, use_fork_rules_fn, tfer_retVals);
 			if (tfer_retVals.did_error) {
 				retVals.did_error = true;
 				retVals.err_string = *tfer_retVals.err_string;
@@ -532,9 +533,9 @@ bool monero_transfer_utils::create_pending_transactions_3(
 				while (needed_fee > test_ptx.fee) {
 					RetVals_base tfer_retVals;
 					if (use_rct)
-						transfer_selected_rct(transfers, subaddresses, is_wallet_multisig, is_testnet, upper_transaction_size_limit, account_keys, multisig_threshold, wallet_multisig_signers, tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra, test_tx, test_ptx, bulletproof, get_random_outs_fn, tfer_retVals);
+						transfer_selected_rct(transfers, subaddresses, is_wallet_multisig, is_testnet, upper_transaction_size_limit, account_keys, multisig_threshold, wallet_multisig_signers, tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra, test_tx, test_ptx, bulletproof, get_random_outs_fn, use_fork_rules_fn, tfer_retVals);
 					else
-						transfer_selected(transfers, subaddresses, is_wallet_multisig, is_testnet, upper_transaction_size_limit, account_keys, multisig_threshold, tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra, detail::digit_split_strategy, tx_dust_policy(::config::DEFAULT_DUST_THRESHOLD), test_tx, test_ptx, get_random_outs_fn, tfer_retVals);
+						transfer_selected(transfers, subaddresses, is_wallet_multisig, is_testnet, upper_transaction_size_limit, account_keys, multisig_threshold, tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra, detail::digit_split_strategy, tx_dust_policy(::config::DEFAULT_DUST_THRESHOLD), test_tx, test_ptx, get_random_outs_fn, use_fork_rules_fn, tfer_retVals);
 					if (tfer_retVals.did_error) {
 						retVals.did_error = true;
 						retVals.err_string = *tfer_retVals.err_string;
@@ -635,7 +636,9 @@ void monero_transfer_utils::transfer_selected(
 	cryptonote::transaction& tx,
 	wallet2::pending_tx &ptx,
 	//
-	monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
+	get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
+	use_fork_rules_fn_type use_fork_rules_fn,
+	
 	tools::RetVals_base &retVals // use custom type if it becomes necessary
 
 ) {
@@ -821,7 +824,9 @@ void monero_transfer_utils::transfer_selected_rct(
 	wallet2::pending_tx &ptx,
 	bool bulletproof,
 	//
-	monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
+	get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
+	use_fork_rules_fn_type use_fork_rules_fn,
+	//;
 	tools::RetVals_base &retVals
 ) {
 	retVals = {}; // must init
@@ -1086,24 +1091,25 @@ void monero_transfer_utils::transfer_selected_rct(
 //
 // monero_transfer_utils - General functions
 //
-uint64_t monero_transfer_utils::get_upper_transaction_size_limit(uint64_t upper_transaction_size_limit__or_0_for_default)
+uint64_t monero_transfer_utils::get_upper_transaction_size_limit(uint64_t upper_transaction_size_limit__or_0_for_default, use_fork_rules_fn_type use_fork_rules_fn)
 {
 	if (upper_transaction_size_limit__or_0_for_default > 0)
 		return upper_transaction_size_limit__or_0_for_default;
-	uint64_t full_reward_zone = monero_fork_rules::use_fork_rules(5, 10) ? CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V5 : monero_fork_rules::use_fork_rules(2, 10) ? CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V2 : CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1;
+	uint64_t full_reward_zone = use_fork_rules_fn(5, 10) ? CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V5 : use_fork_rules_fn(2, 10) ? CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V2 : CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1;
 	return full_reward_zone - CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
 }
 uint64_t monero_transfer_utils::get_fee_multiplier(
 	uint32_t priority,
 	uint32_t default_priority,
-	int fee_algorithm
+	int fee_algorithm,
+	use_fork_rules_fn_type use_fork_rules_fn
 ) {
 	static const uint64_t old_multipliers[3] = {1, 2, 3};
 	static const uint64_t new_multipliers[3] = {1, 20, 166};
 	static const uint64_t newer_multipliers[4] = {1, 4, 20, 166};
 	
 	if (fee_algorithm == -1)
-		fee_algorithm = get_fee_algorithm();
+		fee_algorithm = get_fee_algorithm(use_fork_rules_fn);
 	
 	// 0 -> default (here, x1 till fee algorithm 2, x4 from it)
 	if (priority == 0)
@@ -1133,12 +1139,12 @@ uint64_t monero_transfer_utils::get_fee_multiplier(
 	return 1;
 }
 
-int monero_transfer_utils::get_fee_algorithm()
+int monero_transfer_utils::get_fee_algorithm(use_fork_rules_fn_type use_fork_rules_fn)
 {
 	// changes at v3 and v5
-	if (monero_fork_rules::use_fork_rules(5, 0))
+	if (use_fork_rules_fn(5, 0))
 		return 2;
-	if (monero_fork_rules::use_fork_rules(3, -720 * 14))
+	if (use_fork_rules_fn(3, -720 * 14))
 		return 1;
 	return 0;
 }

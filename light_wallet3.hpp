@@ -85,6 +85,8 @@ namespace tools
 		uint64_t total_sent() { return m_light_wallet_total_sent; }
 		const std::unordered_map<crypto::hash, light_wallet3::address_tx> address_txs() { return m_light_wallet_address_txs; }
 		//
+		bool use_fork_rules(uint8_t version, int64_t early_blocks) const override; // required
+		//
 		// Transferring
 		uint64_t get_dynamic_per_kb_fee_estimate() const override; // required; but this impl intentionally causes exception on call
 		uint64_t get_per_kb_fee() const override;

@@ -160,6 +160,11 @@ namespace tools
 		virtual uint64_t get_per_kb_fee() const; // may be overridden
 		virtual uint64_t get_dynamic_per_kb_fee_estimate() const =0; // must be overridden
 		//
+		virtual bool use_fork_rules(uint8_t version, int64_t early_blocks) const =0; // must be overridden
+		//
+		uint32_t get_default_priority() const { return m_default_priority; }
+    	void set_default_priority(uint32_t p) { m_default_priority = p; }
+		//
 		void remove_obsolete_pool_txs(const std::vector<crypto::hash> &tx_hashes);
 		void process_unconfirmed(const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t height);
 		//
@@ -177,6 +182,8 @@ namespace tools
 			std::set<uint32_t> subaddr_indices,
 			uint32_t current_subaddress_account_idx,
 			monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
+			monero_transfer_utils::use_fork_rules_fn_type use_fork_rules_fn,
+			//
 			bool is_trusted_daemon,
 			//
 			wallet3_base::CreateTx_RetVals &retVals
@@ -238,7 +245,7 @@ namespace tools
 	//		bool m_print_ring_members;
 //		bool m_store_tx_info; /*!< request txkey to be returned in RPC, and store in the wallet cache file */
 	//		uint32_t m_default_mixin;
-	//		uint32_t m_default_priority;
+		uint32_t m_default_priority;
 	//		RefreshType m_refresh_type;
 	//		bool m_auto_refresh;
 	//		uint64_t m_refresh_from_block_height;

@@ -1,8 +1,8 @@
 //
-//  monero_fork_rules.cpp
+//  full_wallet3.cpp
 //  MyMonero
 //
-//  Created by Paul Shapiro on 1/9/18.
+//  Created by Paul Shapiro on 2/21/18.
 //  Copyright (c) 2014-2018, MyMonero.com
 //
 //  All rights reserved.
@@ -30,24 +30,58 @@
 //  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 //  STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-//
-//
-#include "monero_fork_rules.hpp"
-//
-using namespace monero_fork_rules;
-//
-bool monero_fork_rules::use_fork_rules(uint8_t version, int64_t early_blocks, uint64_t node_rpc_proxy__height, uint64_t node_rpc_proxy__earliest_height)
-{
-  bool close_enough = node_rpc_proxy__height >=  node_rpc_proxy__earliest_height - early_blocks; // start using the rules that many blocks beforehand
-//  if (close_enough)
-//    LOG_PRINT_L2("Using v" << (unsigned)version << " rules");
-//  else
-//    LOG_PRINT_L2("Not using v" << (unsigned)version << " rules");
-  return close_enough;
-}
 
-uint8_t monero_fork_rules::get_bulletproof_fork(bool is_testnet)
+#include "full_wallet3.hpp"
+#include "include_base_utils.h"
+#include "monero_transfer_utils.hpp"
+#include "monero_fork_rules.hpp"
+#include <random>
+
+using namespace epee;
+using namespace tools;
+using namespace crypto;
+using namespace cryptonote;
+
+
+full_wallet3::full_wallet3(bool testnet, bool restricted)
+	: wallet3_base::wallet3_base(testnet, restricted)
+	// TODO
+//	, m_node_rpc_proxy(m_http_client, m_daemon_rpc_mutex)
+	// TODO
 {
-  return 8;
+}
+//
+//
+uint64_t full_wallet3::get_dynamic_per_kb_fee_estimate() const
+{
+// TODO
+	return FEE_PER_KB;
+}
+bool full_wallet3::use_fork_rules(uint8_t version, int64_t early_blocks) const
+{
+	return monero_fork_rules::use_fork_rules(
+		version,
+		early_blocks,
+		node_rpc_proxy__get_height(),
+		node_rpc_proxy__get_earliest_height(version)
+	);
+}
+//
+uint64_t full_wallet3::node_rpc_proxy__get_height() const
+{
+//	uint64_t height;
+//	boost::optional<std::string> result = m_node_rpc_proxy.get_height(height);
+	// TODO: include
+//	throw_on_rpc_response_error(result, "get_info");
+	//
+	return 0; // TODO height;
+}
+uint64_t full_wallet3::node_rpc_proxy__get_earliest_height(uint8_t version) const
+{
+//	uint64_t earliest_height;
+//	boost::optional<std::string> result = m_node_rpc_proxy.get_earliest_height(version, earliest_height);
+	// TODO: include
+//	throw_on_rpc_response_error(result, "get_hard_fork_info");
+	//
+	return 0; // TODO earliest_height;
 }

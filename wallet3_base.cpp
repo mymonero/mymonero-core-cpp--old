@@ -59,7 +59,7 @@ namespace tools
 	//	m_print_ring_members(false),
 //		m_store_tx_info(true),
 	//	m_default_mixin(0),
-	//	m_default_priority(0),
+		m_default_priority(0),
 	//	m_refresh_type(RefreshOptimizeCoinbase),
 	//	m_auto_refresh(true),
 	//	m_refresh_from_block_height(0),
@@ -215,6 +215,12 @@ namespace tools
 			return FEE_PER_KB;
 		
 		return get_dynamic_per_kb_fee_estimate();
+	}
+	bool wallet3_base::use_fork_rules(uint8_t version, int64_t early_blocks) const
+	{
+		THROW_WALLET_EXCEPTION_IF(true, error::wallet_internal_error, "Override and implement use_fork_rules");
+
+		return false;
 	}
 	cryptonote::account_public_address wallet3_base::get_subaddress(const cryptonote::subaddress_index& index) const
 	{
@@ -402,10 +408,11 @@ namespace tools
 		const std::string &amount_float_string,
 		const std::string *optl__payment_id_string_ptr,
 		uint32_t mixin,
-		uint32_t simple_priority,
+		uint32_t priority,
 		std::set<uint32_t> subaddr_indices,
 		uint32_t current_subaddress_account_idx,
 		monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn,
+		monero_transfer_utils::use_fork_rules_fn_type use_fork_rules_fn,
 		bool is_trusted_daemon,
 		//
 		wallet3_base::CreateTx_RetVals &retVals
@@ -487,8 +494,6 @@ namespace tools
 		//		}
 		//		unlock_block = bc_height + locked_blocks;
 		//	}
-		
-		uint32_t default_priority = 1;
 		bool merge_destinations = false; // apparent default from wallet2
 		//
 		CreatePendingTx_RetVals pendingTxs_retVals;
@@ -501,8 +506,8 @@ namespace tools
 			unlock_block,
 			get_per_kb_fee(),
 			blockchain_height(),
-			simple_priority,
-			default_priority,
+			priority,
+			m_default_priority,
 			extra,
 			m_upper_transaction_size_limit,
 			//
@@ -523,6 +528,7 @@ namespace tools
 			m_multisig,
 			//
 			get_random_outs_fn,
+			use_fork_rules_fn,
 			//
 			pendingTxs_retVals
 		);

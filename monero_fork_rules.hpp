@@ -33,14 +33,14 @@
 //
 //
 
-#ifndef monero_wallet_utils_hpp
-#define monero_wallet_utils_hpp
+#ifndef monero_fork_rules_hpp
+#define monero_fork_rules_hpp
 
 #include "crypto.h"
 
 namespace monero_fork_rules
 {
-	bool use_fork_rules(uint8_t version, int64_t early_blocks, bool is_light_wallet = false, uint64_t rpc_proxy_height = 0, uint64_t rpc_proxy_earliest_height = 0);
+	bool use_fork_rules(uint8_t version, int64_t early_blocks, uint64_t node_rpc_proxy__height, uint64_t node_rpc_proxy__earliest_height);
 
 	uint8_t get_bulletproof_fork(bool is_testnet = false);
 }

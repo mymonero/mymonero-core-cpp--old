@@ -32,9 +32,10 @@
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "light_wallet3.hpp"
+#include <random>
 #include "include_base_utils.h"
 #include "monero_transfer_utils.hpp"
-#include <random>
+#include "monero_fork_rules.hpp"
 
 using namespace epee;
 using namespace tools;
@@ -603,6 +604,17 @@ uint64_t light_wallet3::get_dynamic_per_kb_fee_estimate() const
 	
 	return FEE_PER_KB;
 }
+bool light_wallet3::use_fork_rules(uint8_t version, int64_t early_blocks) const
+{
+	// TODO: implement.. need to have the latest lightwallet blockchain height and look up earliest_height for the version requested.. then call monero_fork_rules function
+	//
+	// This is all temporary:
+	if (version >= monero_fork_rules::get_bulletproof_fork(m_testnet)) {
+		return false;
+	}
+	return true;
+}
+//
 uint64_t light_wallet3::get_per_kb_fee() const
 {
 	return m_light_wallet_per_kb_fee;
@@ -630,6 +642,13 @@ bool light_wallet3::create_signed_transaction(
 	std::set<uint32_t> subaddr_indices;
 	uint32_t current_subaddress_account_idx = 0;
 	//
+	monero_transfer_utils::use_fork_rules_fn_type use_fork_rules_fn = [
+		this
+	] (
+		uint8_t version, int64_t early_blocks
+	) -> bool {
+		return use_fork_rules(version, early_blocks);
+	};
 	return base__create_signed_transaction(
 		to_address_string,
 		amount_float_string,
@@ -639,6 +658,7 @@ bool light_wallet3::create_signed_transaction(
 		subaddr_indices,
 		current_subaddress_account_idx,
 		get_random_outs_fn,
+		use_fork_rules_fn,
 		true, // is_trusted_daemon
 		//
 		retVals
