@@ -598,12 +598,6 @@ uint64_t light_wallet3::unlocked_balance(uint32_t index_major) const
 {
 	return (m_light_wallet_total_received - m_light_wallet_total_sent) - m_light_wallet_locked_balance; // FIXME: verify correctness
 }
-uint64_t light_wallet3::get_dynamic_per_kb_fee_estimate() const
-{
-	THROW_WALLET_EXCEPTION_IF(true, error::wallet_internal_error, "Calls to light_wallet3::get_dynamic_per_kb_fee_estimate are not expected");
-	
-	return FEE_PER_KB;
-}
 bool light_wallet3::use_fork_rules(uint8_t version, int64_t early_blocks) const
 {
 	// TODO: implement.. need to have the latest lightwallet blockchain height and look up earliest_height for the version requested.. then call monero_fork_rules function
@@ -615,6 +609,12 @@ bool light_wallet3::use_fork_rules(uint8_t version, int64_t early_blocks) const
 	return true;
 }
 //
+uint64_t light_wallet3::get_dynamic_per_kb_fee_estimate() const
+{
+	THROW_WALLET_EXCEPTION_IF(true, error::wallet_internal_error, "Calls to light_wallet3::get_dynamic_per_kb_fee_estimate are not expected because it is only ever called by base_wallet3::get_per_kb_fee(), which is overridden and reimplemented herein.");
+	//
+	return FEE_PER_KB; // garbage / arbitrary
+}
 uint64_t light_wallet3::get_per_kb_fee() const
 {
 	return m_light_wallet_per_kb_fee;
