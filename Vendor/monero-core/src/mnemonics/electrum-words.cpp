@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2017, The Monero Project
+// Copyright (c) 2014-2018, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -194,7 +194,7 @@ namespace
     }
     boost::crc_32_type result;
     result.process_bytes(trimmed_words.data(), trimmed_words.length());
-    return result.checksum() % crypto::ElectrumWords::seed_length;
+    return result.checksum() % word_list.size();
   }
 
   /*!
@@ -205,6 +205,8 @@ namespace
    */
   bool checksum_test(std::vector<std::string> seed, uint32_t unique_prefix_length)
   {
+    if (seed.empty())
+      return false;
     // The last word is the checksum.
     std::string last_word = seed.back();
     seed.pop_back();
@@ -333,21 +335,21 @@ namespace crypto
         return false;
       if (s.size() != sizeof(dst))
         return false;
-      dst = *(const crypto::secret_key*)s.data();
+      memcpy(dst.data, s.data(), sizeof(dst.data));
       return true;
     }
 
-	  bool words_to_bytes(std::string words, legacy16B_secret_key& dst, std::string &language_name)
-	  {
-		  std::string s;
-		  if (!words_to_bytes(words, s, sizeof(dst), true, language_name))
-			  return false;
-		  if (s.size() != sizeof(dst))
-			  return false;
-		  dst = *(const legacy16B_secret_key*)s.data();
-		  return true;
-	  }
-	  
+    bool words_to_bytes(std::string words, legacy16B_secret_key& dst, std::string &language_name)
+    {
+      std::string s;
+      if (!words_to_bytes(words, s, sizeof(dst), true, language_name))
+        return false;
+      if (s.size() != sizeof(dst))
+        return false;
+      memcpy(dst.data, s.data(), sizeof(dst.data));
+      return true;
+    }
+
     /*!
      * \brief Converts bytes (secret key) to seed words.
      * \param  src           Secret key
@@ -419,7 +421,7 @@ namespace crypto
       std::vector<std::string> words_store;
 
       uint32_t word_list_length = word_list.size();
-      // 8 bytes -> 3 words.  8 digits base 16 -> 3 digits base 1626
+      // 4 bytes -> 3 words.  8 digits base 16 -> 3 digits base 1626
       for (unsigned int i=0; i < len/4; i++, words += ' ')
       {
         uint32_t w1, w2, w3;
@@ -454,11 +456,11 @@ namespace crypto
       return bytes_to_words(src.data, sizeof(src), words, language_name);
     }
 
-	bool bytes_to_words(const legacy16B_secret_key& src, std::string& words, const std::string &language_name)
-	{
-	  return bytes_to_words(src.data, sizeof(src), words, language_name);
-	}
-	  
+    bool bytes_to_words(const legacy16B_secret_key& src, std::string& words, 
+      const std::string &language_name)
+    {
+      return bytes_to_words(src.data, sizeof(src), words, language_name);
+    }
     /*!
      * \brief Gets a list of seed languages that are supported.
      * \param languages The vector is set to the list of languages.

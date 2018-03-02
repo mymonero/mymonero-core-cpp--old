@@ -300,10 +300,8 @@ namespace crypto {
   const static crypto::secret_key null_skey = boost::value_initialized<crypto::secret_key>();
   const static crypto::legacy16B_secret_key null_legacy16B_skey = boost::value_initialized<crypto::legacy16B_secret_key>();
 
-  static unsigned long sec_seed_bytes_length = 32;
-  static unsigned long legacy16B__sec_seed_bytes_length = 16;
-  static unsigned long sec_seed_hex_string_length = sec_seed_bytes_length * 2;
-  static unsigned long legacy16B__sec_seed_hex_string_length = legacy16B__sec_seed_bytes_length * 2;
+  const static unsigned long sec_seed_hex_string_length = sizeof(secret_key) * 2;
+  const static unsigned long legacy16B__sec_seed_hex_string_length = sizeof(legacy16B_secret_key) * 2;
 }
 
 CRYPTO_MAKE_HASHABLE(public_key)
