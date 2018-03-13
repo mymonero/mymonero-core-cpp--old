@@ -1,0 +1,2 @@
+* epee/include/misc_log_ex.h -> epee/include/misc_log_ex-ORIGINAL.h; misc_log_ex.h content replaced to remove easylogging++ and use vtlogger/"logger.h"
+
