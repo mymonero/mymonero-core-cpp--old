@@ -59,7 +59,7 @@ bool monero_wallet_utils::new_wallet(
 	crypto::secret_key nonLegacy32B_sec_seed = account.generate();
 	//
 	const cryptonote::account_keys& keys = account.get_keys();
-	std::string address_string = account.get_public_address_str(isTestnet); // getting the string here instead of leaving it to the consumer b/c get_public_address_str could potentially change in implementation (see TODO) so it's not right to duplicate that here
+	std::string address_string = account.get_public_address_str(isTestnet ? TESTNET : MAINNET); // getting the string here instead of leaving it to the consumer b/c get_public_address_str could potentially change in implementation (see TODO) so it's not right to duplicate that here
 	//
 	std::string mnemonic_string;
 	bool r = crypto::ElectrumWords::bytes_to_words(nonLegacy32B_sec_seed, mnemonic_string, std::move(mnemonic_language));

@@ -2,4 +2,4 @@
 
 * src/cryptonote_basic/miner.cpp -> src/cryptonote_basic/miner.ORIGINAL.cpp; miner.cpp content edited to remove implementation
 
-* 
+* bulletproofs.cc, rctSigs.cpp -> …-ORIGINAL.cpp to comment out perf_timer usages
