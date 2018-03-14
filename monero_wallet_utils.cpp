@@ -36,6 +36,7 @@
 #include "monero_wallet_utils.hpp"
 #include <boost/algorithm/string.hpp>
 #include "cryptonote_basic/account.h"
+#include "monero_legacy16B_keys.hpp"
 //
 #include "string_tools.h"
 using namespace epee;
@@ -131,7 +132,7 @@ bool monero_wallet_utils::decoded_seed(
 			//
 			return false;
 		}
-		crypto::coerce_valid_sec_key_from(legacy16B_sec_seed, sec_seed);
+		monero_legacy16B_keys::coerce_valid_sec_key_from(legacy16B_sec_seed, sec_seed);
 		sec_seed_string = string_tools::pod_to_hex(legacy16B_sec_seed); // <- NOTE: we are returning the _LEGACY_ seed as the string… this is important so we don't lose the fact it was 16B/13-word originally!
 	} else {
 		retVals.did_error = true;
@@ -174,7 +175,7 @@ bool monero_wallet_utils::wallet_with(
 	{
 		*decodedSeed_retVals.optl__sec_seed_string, // assumed non nil if r
 		//
-		account.get_public_address_str(isTestnet),
+		account.get_public_address_str(isTestnet ? cryptonote::TESTNET : cryptonote::MAINNET),
 		//
 		keys.m_spend_secret_key,
 		keys.m_view_secret_key,
@@ -198,7 +199,7 @@ bool monero_wallet_utils::validate_wallet_components_with(
 	cryptonote::address_parse_info decoded_address_info;
 	r = cryptonote::get_account_address_from_str(
 		decoded_address_info,
-		inputs.isTestnet,
+		inputs.isTestnet ? cryptonote::TESTNET : cryptonote::MAINNET,
 		inputs.address_string
 	);
 	if (r == false) {
@@ -289,7 +290,7 @@ bool monero_wallet_utils::validate_wallet_components_with(
 					//
 					return false;
 				}
-				crypto::coerce_valid_sec_key_from(legacy16B_sec_seed, sec_seed);
+				monero_legacy16B_keys::coerce_valid_sec_key_from(legacy16B_sec_seed, sec_seed);
 			}
 			cryptonote::account_base expected_account{}; // this initializes the wallet and should call the default constructor
 			expected_account.generate(sec_seed, true/*recover*/, false/*two_random*/, from_legacy16B_lw_seed);

@@ -2,4 +2,16 @@
 
 * src/cryptonote_basic/miner.cpp -> src/cryptonote_basic/miner.ORIGINAL.cpp; miner.cpp content edited to remove implementation
 
-* bulletproofs.cc, rctSigs.cpp -> …-ORIGINAL.cpp to comment out perf_timer usages
+* account.cpp had to be modified in place - didn't make sense to edit monero_legacy16B_key.* to e.g. subclass account_base
+
+	* .h
+    ```
+    crypto::secret_key generate(const crypto::secret_key& recovery_key = crypto::secret_key(), bool recover = false, bool two_random = false, bool from_legacy16B_lw_seed = false);
+    ```
+    
+	* .cpp
+	```
+	crypto::secret_key account_base::generate(const crypto::secret_key& recovery_key, bool recover, bool two_random, bool from_legacy16B_lw_seed)
+
+	keccak((uint8_t *)&(from_legacy16B_lw_seed ? first : m_keys.m_spend_secret_key), sizeof(crypto::secret_key), (uint8_t *)&second, sizeof(crypto::secret_key));
+	```
