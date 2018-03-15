@@ -264,12 +264,12 @@ namespace tools
 	std::string wallet3_base::get_subaddress_as_str(const cryptonote::subaddress_index& index) const
 	{
 		cryptonote::account_public_address address = get_subaddress(index);
-		return cryptonote::get_account_address_as_str(m_testnet, !index.is_zero(), address);
+		return cryptonote::get_account_address_as_str(m_testnet ? cryptonote::TESTNET : cryptonote::MAINNET, !index.is_zero(), address);
 	}
 	//----------------------------------------------------------------------------------------------------
 	std::string wallet3_base::get_integrated_address_as_str(const crypto::hash8& payment_id) const
 	{
-		return cryptonote::get_account_integrated_address_as_str(m_testnet, get_address(), payment_id);
+		return cryptonote::get_account_integrated_address_as_str(m_testnet ? cryptonote::TESTNET : cryptonote::MAINNET, get_address(), payment_id);
 	}
 	//
 	uint64_t wallet3_base::blockchain_height() const
@@ -453,7 +453,7 @@ namespace tools
 		{
 			bool r = false;
 			cryptonote::address_parse_info info;
-			r = cryptonote::get_account_address_from_str(info, m_testnet, to_address_string);
+			r = cryptonote::get_account_address_from_str(info, m_testnet ? cryptonote::TESTNET : cryptonote::MAINNET, to_address_string);
 			if (!r) {
 				retVals.did_error = true;
 				retVals.err_string = "couldn't parse address.";

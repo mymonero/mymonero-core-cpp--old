@@ -1471,7 +1471,7 @@ std::string monero_transfer_utils::new_dummy_address_string_for_rct_tx(bool isTe
 	cryptonote::account_base account;
 	account.generate();
 	//
-	return account.get_public_address_str(isTestnet);
+	return account.get_public_address_str(isTestnet ? cryptonote::TESTNET : cryptonote::MAINNET);
 }
 //
 std::map<uint32_t, uint64_t> monero_transfer_utils::balance_per_subaddress(
