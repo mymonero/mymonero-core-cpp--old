@@ -74,6 +74,15 @@ namespace crypto // extension
 		 * \return                 false if not a multiple of 3 words, or if word is not in the words list
 		 */
 		bool words_to_bytes(std::string words, legacy16B_secret_key& dst, std::string &language_name);
+
+		/*!
+		 * \brief Converts bytes (secret key) to seed words.
+		 * \param  src           16-byte legacy secret key
+		 * \param  words         Space delimited concatenated words get written here.
+		 * \param  language_name Seed language name
+		 * \return               true if successful false if not. Unsuccessful if wrong key size.
+		 */
+		bool bytes_to_words(const legacy16B_secret_key& src, std::string& words, const std::string &language_name);
 	}
 }
 CRYPTO_MAKE_HASHABLE(legacy16B_secret_key)

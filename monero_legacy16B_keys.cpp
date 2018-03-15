@@ -63,11 +63,15 @@ void monero_legacy16B_keys::coerce_valid_sec_key_from(
 //
 bool crypto::ElectrumWords::words_to_bytes(std::string words, legacy16B_secret_key& dst, std::string &language_name)
 {
-  std::string s;
-  if (!words_to_bytes(words, s, sizeof(dst), true, language_name))
-	return false;
-  if (s.size() != sizeof(dst))
-	return false;
-  memcpy(dst.data, s.data(), sizeof(dst.data));
-  return true;
+	std::string s;
+	if (!words_to_bytes(words, s, sizeof(dst), true, language_name))
+		return false;
+	if (s.size() != sizeof(dst))
+		return false;
+	memcpy(dst.data, s.data(), sizeof(dst.data));
+	return true;
+}
+bool bytes_to_words(const legacy16B_secret_key& src, std::string& words, const std::string &language_name)
+{
+	return crypto::ElectrumWords::bytes_to_words(src.data, sizeof(src), words, language_name);
 }
