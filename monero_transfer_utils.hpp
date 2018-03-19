@@ -63,108 +63,7 @@ namespace monero_transfer_utils
 	typedef std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t, get_random_outs_fn_RetVals &)> get_random_outs_fn_type; // this function MUST be synchronous; it must also initialize a get_random_outs_fn_RetVals (e.g. 'retVals = {};')
 	typedef std::function<bool(uint8_t, int64_t)> use_fork_rules_fn_type;
 	//
-	//
-	// Shared - create_transactions_*
-	//
-	struct CreatePendingTx_RetVals: RetVals_base
-	{
-		boost::optional<std::vector<tools::wallet2::pending_tx>> pending_txs;
-	};
-	bool create_pending_transactions_3( // aka create_transactions_3, from create_transactions_2
-		const cryptonote::account_keys &account_keys,
-		const std::vector<wallet2::transfer_details> &transfers,
-		std::unordered_map<crypto::hash, tools::wallet2::unconfirmed_transfer_details> unconfirmed_txs,
-		std::vector<cryptonote::tx_destination_entry> dsts,
-		const size_t fake_outs_count,
-		const uint64_t fee_per_kb,
-		const uint64_t unlock_time,
-		const uint64_t blockchain_size,
-		const uint32_t priority,
-		const uint32_t default_priority,
-		const std::vector<uint8_t>& extra,
-		const uint64_t upper_transaction_size_limit__or_0_for_default,
-		//
-		const uint32_t subaddr_account,
-		std::set<uint32_t> subaddr_indices,
-		const uint64_t unlocked_balance_for_subaddr_index,
-		const std::unordered_map<crypto::public_key, cryptonote::subaddress_index> &subaddresses,
-		//
-		const uint32_t min_output_count,
-		const uint64_t min_output_value,
-		//
-		uint32_t multisig_threshold,
-		std::vector<crypto::public_key> multisig_signers,
-		//
-		bool merge_destinations,
-		bool trusted_daemon,
-		bool is_testnet,
-		bool is_wallet_multisig,
-		//
-		get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
-		use_fork_rules_fn_type use_fork_rules_fn,
-		//
-		CreatePendingTx_RetVals &retVals // initializes a retVals for you
-	);	
-	//
-	//
-	// Shared - Utilities
-	//
-	template<typename T>
-	void transfer_selected(
-		const wallet2::transfer_container &transfers,
-		const std::unordered_map<crypto::public_key, cryptonote::subaddress_index> &subaddresses,
-		bool is_wallet_multisig,
-		bool is_testnet,
-		uint64_t upper_transaction_size_limit,
-		const cryptonote::account_keys &account_keys,
-		uint32_t multisig_threshold,
-		//
-		const std::vector<cryptonote::tx_destination_entry>& dsts,
-		const std::vector<size_t>& selected_transfers,
-		size_t fake_outputs_count,
-		std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs,
-		uint64_t unlock_time,
-		uint64_t fee,
-		const std::vector<uint8_t>& extra,
-		T destination_split_strategy,
-		const tools::tx_dust_policy& dust_policy,
-		cryptonote::transaction& tx,
-		tools::wallet2::pending_tx &ptx,
-		//
-		get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
-		use_fork_rules_fn_type use_fork_rules_fn,
-		//
-		tools::RetVals_base &retVals
-	);
-	void transfer_selected_rct(
-		const wallet2::transfer_container &transfers,
-		const std::unordered_map<crypto::public_key, cryptonote::subaddress_index> &subaddresses,
-		bool is_wallet_multisig,
-		bool is_testnet,
-		uint64_t upper_transaction_size_limit,
-		const cryptonote::account_keys &account_keys,
-		uint32_t multisig_threshold,
-		std::vector<crypto::public_key> wallet_multisig_signers,
-		//
-		std::vector<cryptonote::tx_destination_entry> dsts,
-		const std::vector<size_t>& selected_transfers,
-		size_t fake_outputs_count,
-		std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs,
-		uint64_t unlock_time,
-		uint64_t fee,
-		const std::vector<uint8_t>& extra,
-		cryptonote::transaction& tx,
-		tools::wallet2::pending_tx &ptx,
-		bool bulletproof,
-		//
-		get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
-		use_fork_rules_fn_type use_fork_rules_fn,
-		//
-		tools::RetVals_base &retVals
-	);
-	//
 	uint64_t num_rct_outputs(); // TODO: migrate to standard function
-	uint64_t get_upper_transaction_size_limit(uint64_t upper_transaction_size_limit__or_0_for_default, use_fork_rules_fn_type use_fork_rules_fn);
 	uint64_t get_fee_multiplier(uint32_t priority, uint32_t default_priority, int fee_algorithm, use_fork_rules_fn_type use_fork_rules_fn);
 	int get_fee_algorithm(use_fork_rules_fn_type use_fork_rules_fn);
 	//
@@ -175,52 +74,8 @@ namespace monero_transfer_utils
 	size_t estimate_tx_size(bool use_rct, int n_inputs, int mixin, int n_outputs, size_t extra_size, bool bulletproof);
 	//
 	//
-	std::vector<size_t> pick_preferred_rct_inputs(const tools::wallet2::transfer_container &transfers, uint64_t needed_money, uint32_t subaddr_account, const std::set<uint32_t> &subaddr_indices, uint64_t blockchain_size, bool is_testnet);
-	//
-	bool should_pick_a_second_output(bool use_rct, const tools::wallet2::transfer_container &transfers, size_t n_transfers, const std::vector<size_t> &unused_transfers_indices, const std::vector<size_t> &unused_dust_indices);
-	
-	size_t pop_best_value_from(const tools::wallet2::transfer_container &transfers, std::vector<size_t> &unused_dust_indices, const std::vector<size_t>& selected_transfers, bool smallest = false);
-	
-	std::vector<size_t> get_only_rct(const tools::wallet2::transfer_container &transfers, const std::vector<size_t> &unused_dust_indices, const std::vector<size_t> &unused_transfers_indices);
-	uint32_t get_count_above(const tools::wallet2::transfer_container &transfers, const std::vector<size_t> &indices, uint64_t threshold);
-	float get_output_relatedness(const tools::wallet2::transfer_details &td0, const tools::wallet2::transfer_details &td1);
-	//
-	bool is_transfer_unlocked(const tools::wallet2::transfer_details& td, uint64_t blockchain_size, bool is_testnet = false);
-	bool is_transfer_unlocked(uint64_t unlock_time, uint64_t block_height, uint64_t blockchain_size, bool is_testnet = false);
-	bool is_tx_spendtime_unlocked(uint64_t unlock_time, uint64_t block_height, uint64_t blockchain_size, bool is_testnet = false);
-	uint64_t unlocked_balance(const tools::wallet2::transfer_container &transfers, uint64_t blockchain_size, bool is_testnet);
-	
-	std::map<uint32_t, uint64_t> balance_per_subaddress(
-		std::vector<wallet2::transfer_details> transfers,
-		std::unordered_map<crypto::hash, wallet2::unconfirmed_transfer_details> unconfirmed_txs,
-		uint32_t index_major
-	);
-	std::map<uint32_t, uint64_t> unlocked_balance_per_subaddress(
-		std::vector<wallet2::transfer_details> transfers,
-		uint32_t index_major,														 
-		uint64_t blockchain_size,
-		bool is_testnet
-	);
-	//
 	uint32_t fixed_ringsize(); // not mixinsize, which would be ringsize-1
 	uint32_t fixed_mixinsize(); // not ringsize, which would be mixinsize+1
-	//
-	std::string new_dummy_address_string_for_rct_tx(bool isTestnet = false);
-	//
-	void set_spent(wallet2::transfer_details &td, uint64_t height);
-	void set_unspent(wallet2::transfer_details &td);
-	void set_spent(std::vector<wallet2::transfer_details> &transfers, size_t idx, uint64_t height);
-	void set_unspent(std::vector<wallet2::transfer_details> &transfers, size_t idx);
-	//
-	crypto::public_key get_tx_pub_key_from_received_outs(const tools::wallet2::transfer_details &td, const cryptonote::account_keys& keys, const std::unordered_map<crypto::public_key, cryptonote::subaddress_index> &subaddresses);
-	void check_acc_out_precomp(const cryptonote::tx_out &o, const crypto::key_derivation &derivation, const std::vector<crypto::key_derivation> &additional_derivations, size_t i, tools::wallet2::tx_scan_info_t &tx_scan_info, const std::unordered_map<crypto::public_key, cryptonote::subaddress_index> &subaddresses);
-	
-	cryptonote::account_public_address get_subaddress(const cryptonote::subaddress_index& index, const cryptonote::account_keys& keys);
-	crypto::public_key get_subaddress_spend_public_key(const cryptonote::subaddress_index& index, const cryptonote::account_keys& keys);
-	//
-	tools::wallet2::tx_construction_data get_construction_data_with_decrypted_short_payment_id(const tools::wallet2::pending_tx &ptx);
-	crypto::hash get_payment_id(const tools::wallet2::pending_tx &ptx);
-	crypto::hash8 get_short_payment_id(const tools::wallet2::pending_tx &ptx);
 }
 	
 #endif /* monero_transfer_utils_hpp */

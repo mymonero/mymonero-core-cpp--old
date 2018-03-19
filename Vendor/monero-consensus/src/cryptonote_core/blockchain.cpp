@@ -106,6 +106,9 @@ static const struct {
 
   // version 6 starts from block 1400000, which is on or around the 16th of September, 2017. Fork time finalised on 2017-08-18.
   { 6, 1400000, 0, 1503046577 },
+
+  // version 7 starts from block 1546000, which is on or around the 6th of April, 2018. Fork time finalised on 2018-03-17.
+  { 7, 1546000, 0, 1521303150 },
 };
 static const uint64_t mainnet_hard_fork_version_1_till = 1009826;
 
@@ -140,6 +143,14 @@ static const struct {
 } stagenet_hard_forks[] = {
   // version 1 from the start of the blockchain
   { 1, 1, 0, 1341378000 },
+
+  // versions 2-7 in rapid succession from March 13th, 2018
+  { 2, 32000, 0, 1521000000 },
+  { 3, 33000, 0, 1521120000 },
+  { 4, 34000, 0, 1521240000 },
+  { 5, 35000, 0, 1521360000 },
+  { 6, 36000, 0, 1521480000 },
+  { 7, 37000, 0, 1521600000 },
 };
 
 //------------------------------------------------------------------
@@ -733,25 +744,6 @@ bool Blockchain::get_block_by_hash(const crypto::hash &h, block &blk, bool *orph
   return false;
 }
 //------------------------------------------------------------------
-//FIXME: this function does not seem to be called from anywhere, but
-// if it ever is, should probably change std::list for std::vector
-void Blockchain::get_all_known_block_ids(std::list<crypto::hash> &main, std::list<crypto::hash> &alt, std::list<crypto::hash> &invalid) const
-{
-  LOG_PRINT_L3("Blockchain::" << __func__);
-  CRITICAL_REGION_LOCAL(m_blockchain_lock);
-
-  for (auto& a : m_db->get_hashes_range(0, m_db->height() - 1))
-  {
-    main.push_back(a);
-  }
-
-  for (const blocks_ext_by_hash::value_type &v: m_alternative_chains)
-    alt.push_back(v.first);
-
-  for (const blocks_ext_by_hash::value_type &v: m_invalid_blocks)
-    invalid.push_back(v.first);
-}
-//------------------------------------------------------------------
 // This function aggregates the cumulative difficulties and timestamps of the
 // last DIFFICULTY_BLOCKS_COUNT blocks and passes them to next_difficulty,
 // returning the result of that call.  Ignores the genesis block, and can use
@@ -1244,7 +1236,7 @@ bool Blockchain::create_block_template(block& b, const account_public_address& m
       cumulative_size = txs_size + coinbase_blob_size;
 #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
       MDEBUG("Creating block template: miner tx size " << coinbase_blob_size <<
-          ", cumulative size " << cumulative_size << " is greater then before");
+          ", cumulative size " << cumulative_size << " is greater than before");
 #endif
       continue;
     }
@@ -1255,7 +1247,7 @@ bool Blockchain::create_block_template(block& b, const account_public_address& m
 #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
       MDEBUG("Creating block template: miner tx size " << coinbase_blob_size <<
           ", cumulative size " << txs_size + coinbase_blob_size <<
-          " is less then before, adding " << delta << " zero bytes");
+          " is less than before, adding " << delta << " zero bytes");
 #endif
       b.miner_tx.extra.insert(b.miner_tx.extra.end(), delta, 0);
       //here  could be 1 byte difference, because of extra field counter is varint, and it can become from 1-byte len to 2-bytes len.
@@ -1911,6 +1903,45 @@ void Blockchain::get_output_key_mask_unlocked(const uint64_t& amount, const uint
   unlocked = is_tx_spendtime_unlocked(m_db->get_tx_unlock_time(toi.first));
 }
 //------------------------------------------------------------------
+bool Blockchain::get_output_distribution(uint64_t amount, uint64_t from_height, uint64_t &start_height, std::vector<uint64_t> &distribution, uint64_t &base) const
+{
+  // rct outputs don't exist before v3
+  if (amount == 0)
+  {
+    switch (m_nettype)
+    {
+      case STAGENET: start_height = stagenet_hard_forks[2].height; break;
+      case TESTNET: start_height = testnet_hard_forks[2].height; break;
+      case MAINNET: start_height = mainnet_hard_forks[2].height; break;
+      default: return false;
+    }
+  }
+  else
+    start_height = 0;
+  base = 0;
+
+  const uint64_t real_start_height = start_height;
+  if (from_height > start_height)
+    start_height = from_height;
+
+  distribution.clear();
+  uint64_t db_height = m_db->height();
+  if (start_height >= db_height)
+    return false;
+  distribution.resize(db_height - start_height, 0);
+  bool r = for_all_outputs(amount, [&](uint64_t height) {
+    CHECK_AND_ASSERT_MES(height >= real_start_height && height <= db_height, false, "Height not in expected range");
+    if (height >= start_height)
+      distribution[height - start_height]++;
+    else
+      base++;
+    return true;
+  });
+  if (!r)
+    return false;
+  return true;
+}
+//------------------------------------------------------------------
 // This function takes a list of block hashes from another node
 // on the network to find where the split point is between us and them.
 // This is used to see what to send another node that needs to sync.
@@ -2415,7 +2446,8 @@ bool Blockchain::check_tx_outputs(const transaction& tx, tx_verification_context
 
   // from v8, allow bulletproofs
   if (hf_version < 8) {
-    if (!tx.rct_signatures.p.bulletproofs.empty())
+    const bool bulletproof = tx.rct_signatures.type == rct::RCTTypeFullBulletproof || tx.rct_signatures.type == rct::RCTTypeSimpleBulletproof;
+    if (bulletproof || !tx.rct_signatures.p.bulletproofs.empty())
     {
       MERROR("Bulletproofs are not allowed before v8");
       tvc.m_invalid_output = true;
@@ -2951,7 +2983,7 @@ bool Blockchain::check_fee(size_t blob_size, uint64_t fee) const
       return false;
     fee_per_kb = get_dynamic_per_kb_fee(base_reward, median, version);
   }
-  MDEBUG("Using " << print_money(fee) << "/kB fee");
+  MDEBUG("Using " << print_money(fee_per_kb) << "/kB fee");
 
   uint64_t needed_fee = blob_size / 1024;
   needed_fee += (blob_size % 1024) ? 1 : 0;
@@ -4449,9 +4481,14 @@ bool Blockchain::for_all_transactions(std::function<bool(const crypto::hash&, co
   return m_db->for_all_transactions(f);
 }
 
-bool Blockchain::for_all_outputs(std::function<bool(uint64_t amount, const crypto::hash &tx_hash, size_t tx_idx)> f) const
+bool Blockchain::for_all_outputs(std::function<bool(uint64_t amount, const crypto::hash &tx_hash, uint64_t height, size_t tx_idx)> f) const
 {
   return m_db->for_all_outputs(f);;
+}
+
+bool Blockchain::for_all_outputs(uint64_t amount, std::function<bool(uint64_t height)> f) const
+{
+  return m_db->for_all_outputs(amount, f);;
 }
 
 namespace cryptonote {

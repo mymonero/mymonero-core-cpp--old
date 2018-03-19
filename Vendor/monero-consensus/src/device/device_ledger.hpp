@@ -56,12 +56,13 @@ namespace hw {
     public:
         rct::key Aout;
         rct::key Bout;
+        bool     is_subaddress;
         size_t   index;
         rct::key Pout;
         rct::key AKout;
-        ABPkeys(const rct::key& A, const rct::key& B, size_t index, const rct::key& P,const rct::key& AK);
+        ABPkeys(const rct::key& A, const rct::key& B, const bool is_subaddr,  size_t index, const rct::key& P,const rct::key& AK);
         ABPkeys(const ABPkeys& keys) ;
-        ABPkeys() {index=0;}
+        ABPkeys() {index=0;is_subaddress=false;}
     };
 
     class Keymap {
@@ -103,8 +104,8 @@ namespace hw {
         unsigned int  exchange(unsigned int ok=0x9000, unsigned int mask=0xFFFF);
         void reset_buffer(void);
 
-        #ifdef DEBUGLEDGER
-        Device &controle_device;
+        #ifdef DEBUG_HWDEVICE
+        device *controle_device;
         #endif
 
     public:
@@ -141,10 +142,10 @@ namespace hw {
         /*                               SUB ADDRESS                               */
         /* ======================================================================= */
         bool  derive_subaddress_public_key(const crypto::public_key &pub, const crypto::key_derivation &derivation, const std::size_t output_index,  crypto::public_key &derived_pub) override;
-        bool  get_subaddress_spend_public_key(const cryptonote::account_keys& keys, const cryptonote::subaddress_index& index, crypto::public_key &D) override;
-        bool  get_subaddress_spend_public_keys(const cryptonote::account_keys &keys, uint32_t account, uint32_t begin, uint32_t end, std::vector<crypto::public_key> &pkeys) override;
-        bool  get_subaddress(const cryptonote::account_keys& keys, const cryptonote::subaddress_index &index, cryptonote::account_public_address &address) override;
-        bool  get_subaddress_secret_key(const crypto::secret_key &sec, const cryptonote::subaddress_index &index, crypto::secret_key &sub_sec) override;
+        crypto::public_key  get_subaddress_spend_public_key(const cryptonote::account_keys& keys, const cryptonote::subaddress_index& index) override;
+        std::vector<crypto::public_key>  get_subaddress_spend_public_keys(const cryptonote::account_keys &keys, uint32_t account, uint32_t begin, uint32_t end) override;
+        cryptonote::account_public_address  get_subaddress(const cryptonote::account_keys& keys, const cryptonote::subaddress_index &index) override;
+        crypto::secret_key  get_subaddress_secret_key(const crypto::secret_key &sec, const cryptonote::subaddress_index &index) override;
 
         /* ======================================================================= */
         /*                            DERIVATION & KEY                             */
@@ -153,7 +154,7 @@ namespace hw {
         bool  scalarmultKey(rct::key & aP, const rct::key &P, const rct::key &a) override;
         bool  scalarmultBase(rct::key &aG, const rct::key &a) override;
         bool  sc_secret_add(crypto::secret_key &r, const crypto::secret_key &a, const crypto::secret_key &b) override;
-        bool  generate_keys(crypto::public_key &pub, crypto::secret_key &sec, const crypto::secret_key& recovery_key, bool recover, crypto::secret_key &rng) override;
+        crypto::secret_key  generate_keys(crypto::public_key &pub, crypto::secret_key &sec, const crypto::secret_key& recovery_key = crypto::secret_key(), bool recover = false) override;
         bool  generate_key_derivation(const crypto::public_key &pub, const crypto::secret_key &sec, crypto::key_derivation &derivation) override;
         bool  derivation_to_scalar(const crypto::key_derivation &derivation, const size_t output_index, crypto::ec_scalar &res) override;
         bool  derive_secret_key(const crypto::key_derivation &derivation, const std::size_t output_index, const crypto::secret_key &sec,  crypto::secret_key &derived_sec) override;
@@ -169,13 +170,13 @@ namespace hw {
 
         bool  set_signature_mode(unsigned int sig_mode) override;
 
-        bool  encrypt_payment_id(const crypto::public_key &public_key, const crypto::secret_key &secret_key, crypto::hash8 &payment_id ) override;
+        bool  encrypt_payment_id(crypto::hash8 &payment_id, const crypto::public_key &public_key, const crypto::secret_key &secret_key) override;
 
         bool  ecdhEncode(rct::ecdhTuple & unmasked, const rct::key & sharedSec) override;
         bool  ecdhDecode(rct::ecdhTuple & masked, const rct::key & sharedSec) override;
 
-        bool  add_output_key_mapping(const crypto::public_key &Aout, const crypto::public_key &Bout, size_t real_output_index,
-                                            const rct::key &amount_key,  const crypto::public_key &out_eph_public_key) override;
+        bool  add_output_key_mapping(const crypto::public_key &Aout, const crypto::public_key &Bout, const bool is_subaddress, const size_t real_output_index,
+                                     const rct::key &amount_key,  const crypto::public_key &out_eph_public_key) override;
 
 
         bool  mlsag_prehash(const std::string &blob, size_t inputs_size, size_t outputs_size, const rct::keyV &hashes, const rct::ctkeyV &outPk, rct::key &prehash) override;
@@ -190,7 +191,7 @@ namespace hw {
 
 
 
-    #ifdef DEBUGLEDGER
+    #ifdef DEBUG_HWDEVICE
     extern crypto::secret_key viewkey;
     extern crypto::secret_key spendkey;
     #endif

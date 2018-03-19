@@ -37,17 +37,7 @@
 //
 using namespace monero_fork_rules;
 //
-bool monero_fork_rules::use_fork_rules(uint8_t version, int64_t early_blocks, uint64_t node_rpc_proxy__height, uint64_t node_rpc_proxy__earliest_height)
-{
-  bool close_enough = node_rpc_proxy__height >=  node_rpc_proxy__earliest_height - early_blocks; // start using the rules that many blocks beforehand
-//  if (close_enough)
-//    LOG_PRINT_L2("Using v" << (unsigned)version << " rules");
-//  else
-//    LOG_PRINT_L2("Not using v" << (unsigned)version << " rules");
-  return close_enough;
-}
-
-uint8_t monero_fork_rules::get_bulletproof_fork(bool is_testnet)
+uint8_t monero_fork_rules::get_bulletproof_fork()
 {
   return 8;
 }

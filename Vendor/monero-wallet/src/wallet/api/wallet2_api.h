@@ -33,6 +33,7 @@
 
 #include <string>
 #include <vector>
+#include <list>
 #include <set>
 #include <ctime>
 #include <iostream>
@@ -556,7 +557,10 @@ struct Wallet
     static uint64_t maximumAllowedAmount();
     // Easylogger wrapper
     static void init(const char *argv0, const char *default_log_base_name);
-    static void debug(const std::string &str);
+    static void debug(const std::string &category, const std::string &str);
+    static void info(const std::string &category, const std::string &str);
+    static void warning(const std::string &category, const std::string &str);
+    static void error(const std::string &category, const std::string &str);
 
    /**
     * @brief StartRefresh - Start/resume refresh thread (refresh every 10 seconds)
@@ -753,6 +757,30 @@ struct Wallet
     */
     virtual bool rescanSpent() = 0;
     
+    //! blackballs a set of outputs
+    virtual bool blackballOutputs(const std::vector<std::string> &pubkeys, bool add) = 0;
+
+    //! unblackballs an output
+    virtual bool unblackballOutput(const std::string &pubkey) = 0;
+
+    //! gets the ring used for a key image, if any
+    virtual bool getRing(const std::string &key_image, std::vector<uint64_t> &ring) const = 0;
+
+    //! gets the rings used for a txid, if any
+    virtual bool getRings(const std::string &txid, std::vector<std::pair<std::string, std::vector<uint64_t>>> &rings) const = 0;
+
+    //! sets the ring used for a key image
+    virtual bool setRing(const std::string &key_image, const std::vector<uint64_t> &ring, bool relative) = 0;
+
+    //! sets whether pre-fork outs are to be segregated
+    virtual void segregatePreForkOutputs(bool segregate) = 0;
+
+    //! sets the height where segregation should occur
+    virtual void segregationHeight(uint64_t height) = 0;
+
+    //! secondary key reuse mitigation
+    virtual void keyReuseMitigation2(bool mitigation) = 0;
+
     //! Light wallet authenticate and login
     virtual bool lightWalletLogin(bool &isNewWallet) const = 0;
     
@@ -774,7 +802,7 @@ struct WalletManager
      * \param  nettype        Network type
      * \return                Wallet instance (Wallet::status() needs to be called to check if created successfully)
      */
-    virtual Wallet * createWallet(const std::string &path, const std::string &password, const std::string &language, NetworkType nettype = MAINNET) = 0;
+    virtual Wallet * createWallet(const std::string &path, const std::string &password, const std::string &language, NetworkType nettype) = 0;
     Wallet * createWallet(const std::string &path, const std::string &password, const std::string &language, bool testnet = false)      // deprecated
     {
         return createWallet(path, password, language, testnet ? TESTNET : MAINNET);
@@ -787,7 +815,7 @@ struct WalletManager
      * \param  nettype        Network type
      * \return                Wallet instance (Wallet::status() needs to be called to check if opened successfully)
      */
-    virtual Wallet * openWallet(const std::string &path, const std::string &password, NetworkType nettype = MAINNET) = 0;
+    virtual Wallet * openWallet(const std::string &path, const std::string &password, NetworkType nettype) = 0;
     Wallet * openWallet(const std::string &path, const std::string &password, bool testnet = false)     // deprecated
     {
         return openWallet(path, password, testnet ? TESTNET : MAINNET);
@@ -819,7 +847,7 @@ struct WalletManager
      * \param  restoreHeight  restore from start height
      * \return                Wallet instance (Wallet::status() needs to be called to check if recovered successfully)
      */
-    virtual Wallet * recoveryWallet(const std::string &path, const std::string &mnemonic, NetworkType nettype = MAINNET, uint64_t restoreHeight = 0) = 0;
+    virtual Wallet * recoveryWallet(const std::string &path, const std::string &mnemonic, NetworkType nettype, uint64_t restoreHeight = 0) = 0;
     Wallet * recoveryWallet(const std::string &path, const std::string &mnemonic, bool testnet = false, uint64_t restoreHeight = 0)         // deprecated
     {
         return recoveryWallet(path, mnemonic, testnet ? TESTNET : MAINNET, restoreHeight);

@@ -40,9 +40,7 @@
 
 namespace monero_fork_rules
 {
-	bool use_fork_rules(uint8_t version, int64_t early_blocks, uint64_t node_rpc_proxy__height, uint64_t node_rpc_proxy__earliest_height);
-
-	uint8_t get_bulletproof_fork(bool is_testnet = false);
+	uint8_t get_bulletproof_fork();
 }
 
 #endif /* monero_fork_rules */

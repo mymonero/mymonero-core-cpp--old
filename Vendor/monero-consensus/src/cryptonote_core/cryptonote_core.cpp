@@ -104,7 +104,7 @@ namespace cryptonote
   };
   static const command_line::arg_descriptor<uint64_t> arg_test_drop_download_height = {
     "test-drop-download-height"
-  , "Like test-drop-download but disards only after around certain height"
+  , "Like test-drop-download but discards only after around certain height"
   , 0
   };
   static const command_line::arg_descriptor<int> arg_test_dbg_lock_sleep = {
@@ -171,7 +171,8 @@ namespace cryptonote
               m_last_json_checkpoints_update(0),
               m_disable_dns_checkpoints(false),
               m_threadpool(tools::threadpool::getInstance()),
-              m_update_download(0)
+              m_update_download(0),
+              m_nettype(UNDEFINED)
   {
     m_checkpoints_updating.clear();
     set_cryptonote_protocol(pprotocol);
@@ -1105,6 +1106,11 @@ namespace cryptonote
     return m_blockchain_storage.get_random_rct_outs(req, res);
   }
   //-----------------------------------------------------------------------------------------------
+  bool core::get_output_distribution(uint64_t amount, uint64_t from_height, uint64_t &start_height, std::vector<uint64_t> &distribution, uint64_t &base) const
+  {
+    return m_blockchain_storage.get_output_distribution(amount, from_height, start_height, distribution, base);
+  }
+  //-----------------------------------------------------------------------------------------------
   bool core::get_tx_outputs_gindexs(const crypto::hash& tx_id, std::vector<uint64_t>& indexs) const
   {
     return m_blockchain_storage.get_tx_outputs_gindexs(tx_id, indexs);
@@ -1169,7 +1175,7 @@ namespace cryptonote
         LOG_PRINT_L1("Block found but, seems that reorganize just happened after that, do not relay this block");
         return true;
       }
-      CHECK_AND_ASSERT_MES(txs.size() == b.tx_hashes.size() && !missed_txs.size(), false, "cant find some transactions in found block:" << get_block_hash(b) << " txs.size()=" << txs.size()
+      CHECK_AND_ASSERT_MES(txs.size() == b.tx_hashes.size() && !missed_txs.size(), false, "can't find some transactions in found block:" << get_block_hash(b) << " txs.size()=" << txs.size()
         << ", b.tx_hashes.size()=" << b.tx_hashes.size() << ", missed_txs.size()" << missed_txs.size());
 
       block_to_blob(b, arg.b.block);

@@ -33,7 +33,6 @@
 #include "cryptonote_basic.h"
 #include "crypto/crypto.h"
 #include "serialization/keyvalue_serialization.h"
-#include "device/device_declare.hpp"
 
 namespace cryptonote
 {
@@ -66,7 +65,7 @@ namespace cryptonote
   {
   public:
     account_base();
-    crypto::secret_key generate(const crypto::secret_key& recovery_key = crypto::secret_key(), bool recover = false, bool two_random = false, bool from_legacy16B_lw_seed = false);
+    crypto::secret_key generate(const crypto::secret_key& recovery_key = crypto::secret_key(), bool recover = false, bool two_random = false);
     void create_from_device(const std::string &device_name) ;
     void create_from_keys(const cryptonote::account_public_address& address, const crypto::secret_key& spendkey, const crypto::secret_key& viewkey);
     void create_from_viewkey(const cryptonote::account_public_address& address, const crypto::secret_key& viewkey);

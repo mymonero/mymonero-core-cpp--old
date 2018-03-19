@@ -420,7 +420,7 @@ void light_wallet3::ingest__get_unspent_outs(
 			td.m_rct = false;
 		}
 		if (!spent) {
-			monero_transfer_utils::set_unspent(m_transfers, m_transfers.size()-1);
+			set_unspent(m_transfers.size()-1);
 		}
 		m_key_images[td.m_key_image] = m_transfers.size()-1;
 		m_pub_keys[td.get_public_key()] = m_transfers.size()-1;
