@@ -71,7 +71,7 @@ bool crypto::ElectrumWords::words_to_bytes(std::string words, legacy16B_secret_k
 	memcpy(dst.data, s.data(), sizeof(dst.data));
 	return true;
 }
-bool bytes_to_words(const legacy16B_secret_key& src, std::string& words, const std::string &language_name)
+bool crypto::ElectrumWords::bytes_to_words(const legacy16B_secret_key& src, std::string& words, const std::string &language_name)
 {
 	return crypto::ElectrumWords::bytes_to_words(src.data, sizeof(src), words, language_name);
 }

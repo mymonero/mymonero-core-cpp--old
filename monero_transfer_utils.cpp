@@ -150,3 +150,11 @@ uint32_t monero_transfer_utils::fixed_mixinsize()
 {
 	return monero_transfer_utils::fixed_ringsize() - 1;
 }
+
+std::string monero_transfer_utils::new_dummy_address_string_for_rct_tx(bool isTestnet)
+{
+	cryptonote::account_base account;
+	account.generate();
+	//
+	return account.get_public_address_str(isTestnet ? cryptonote::TESTNET : cryptonote::MAINNET);
+}

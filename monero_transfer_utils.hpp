@@ -45,7 +45,7 @@
 //
 using namespace tools;
 #include "tools__ret_vals.hpp"
-#include "wallet2_transfer_utils.h" // to be renamed / phased out after moving relevant types
+#include "wallet2-BORROWED.h" // to be phased out after moving relevant accessory types
 //
 #define SECOND_OUTPUT_RELATEDNESS_THRESHOLD 0.0f
 // used to choose when to stop adding outputs to a tx
@@ -57,11 +57,11 @@ namespace monero_transfer_utils
 {
 	//
 	// Interface - Constructing new transactions
-	struct get_random_outs_fn_RetVals: RetVals_base
-	{ // no other params necessary for now - this is for passing the err str back
-	};
+	struct get_random_outs_fn_RetVals: RetVals_base {}; // no other params necessary for now - this is for passing the err str back
 	typedef std::function<bool(std::vector<std::vector<tools::wallet2::get_outs_entry>> &, const std::vector<size_t> &, size_t, get_random_outs_fn_RetVals &)> get_random_outs_fn_type; // this function MUST be synchronous; it must also initialize a get_random_outs_fn_RetVals (e.g. 'retVals = {};')
+	//
 	typedef std::function<bool(uint8_t, int64_t)> use_fork_rules_fn_type;
+	//
 	//
 	uint64_t num_rct_outputs(); // TODO: migrate to standard function
 	uint64_t get_fee_multiplier(uint32_t priority, uint32_t default_priority, int fee_algorithm, use_fork_rules_fn_type use_fork_rules_fn);
@@ -73,6 +73,7 @@ namespace monero_transfer_utils
 	size_t estimate_rct_tx_size(int n_inputs, int mixin, int n_outputs, size_t extra_size, bool bulletproof);
 	size_t estimate_tx_size(bool use_rct, int n_inputs, int mixin, int n_outputs, size_t extra_size, bool bulletproof);
 	//
+	std::string new_dummy_address_string_for_rct_tx(bool isTestnet = false);
 	//
 	uint32_t fixed_ringsize(); // not mixinsize, which would be ringsize-1
 	uint32_t fixed_mixinsize(); // not ringsize, which would be mixinsize+1

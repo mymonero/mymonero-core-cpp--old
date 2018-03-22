@@ -34,7 +34,7 @@
 #pragma once
 
 #include "wallet3_base.hpp"
-#include "wallet2_transfer_utils.h" // for types
+#include "wallet2-BORROWED.h" // for types
 #include "monero_transfer_utils.hpp"
 #include "light_wallet3_server_api.h"
 //
@@ -61,7 +61,7 @@ namespace tools
 		};
 		//
 		//
-		light_wallet3(bool testnet = false, bool restricted = false);
+		light_wallet3(cryptonote::network_type nettype = cryptonote::MAINNET, bool restricted = false);
 		//
 		// Imperatives - Response reception
 		void ingest__get_address_info(bool did_error, const light_wallet3_server_api::COMMAND_RPC_GET_ADDRESS_INFO::response &res); // sets connected
@@ -73,7 +73,6 @@ namespace tools
 		// Accessors - Overrides
 		uint64_t balance(uint32_t index_major) const; 
 		uint64_t unlocked_balance(uint32_t index_major) const;
-		uint64_t blockchain_height() const;
 		//
 		// Accessors - Lightwallet hosted values
 		uint64_t scanned_height() { return m_light_wallet_scanned_height; }
@@ -85,12 +84,6 @@ namespace tools
 		uint64_t total_sent() { return m_light_wallet_total_sent; }
 		const std::unordered_map<crypto::hash, light_wallet3::address_tx> address_txs() { return m_light_wallet_address_txs; }
 		//
-		bool use_fork_rules(uint8_t version, int64_t early_blocks) const override; // required
-		//
-		// Transferring
-		uint64_t get_dynamic_per_kb_fee_estimate() const override; // required; but this impl intentionally causes exception on call
-		uint64_t get_per_kb_fee() const override;
-		//
 		bool create_signed_transaction( // assumes is_trusted_daemon=true
 			const std::string &to_address_string,
 			const std::string &amount_float_string,
@@ -99,7 +92,7 @@ namespace tools
 			monero_transfer_utils::get_random_outs_fn_type get_random_outs_fn, // this function MUST be synchronous
 			//
 			wallet3_base::CreateTx_RetVals &retVals
-		) const;
+		);
 		void populate_amount_strings_for_get_random_outs(
 			const std::vector<size_t> &selected_transfers, // select from
 			std::vector<std::string> &amounts // to fill
